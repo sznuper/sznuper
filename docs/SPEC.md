@@ -1,8 +1,8 @@
-# notifyd — Specification (Draft)
+# barker — Specification (Draft)
 
 ## Overview
 
-notifyd is a single-binary daemon that sits on a Linux host, watches for system events, and sends notifications to the places you care about. No dashboard, no database, no web UI — just a YAML config file and a process.
+barker is a single-binary daemon that sits on a Linux host, watches for system events, and sends notifications to the places you care about. No dashboard, no database, no web UI — just a YAML config file and a process.
 
 It runs a set of checks — some bundled (CPU, memory, disk, SSH logins, systemd unit failures), some user-defined (any executable that returns a status and key-value output). When a check triggers, it routes a notification through one or more services according to the config. It handles cooldowns, per-alert overrides, and templating so raw scripts don't have to.
 
@@ -28,17 +28,17 @@ It runs a set of checks — some bundled (CPU, memory, disk, SSH logins, systemd
 ### Config File Location
 
 The daemon looks for config in this order:
-1. Explicit flag: `notifyd --config /path/to/config.yaml`
-2. User: `~/.config/notifyd/config.yaml`
-3. System: `/etc/notifyd/config.yaml`
+1. Explicit flag: `barker --config /path/to/config.yaml`
+2. User: `~/.config/barker/config.yaml`
+3. System: `/etc/barker/config.yaml`
 
 ### File Layout
 
 **System-wide (root):**
 
 ```
-/usr/bin/notifyd                          # binary
-/etc/notifyd/
+/usr/bin/barker                          # binary
+/etc/barker/
   config.yaml                             # main config
   checks/                                 # file:// checks
     disk_usage                            # bundled, Cosmopolitan portable binary
@@ -46,25 +46,25 @@ The daemon looks for config in this order:
     memory_usage                          # bundled, Cosmopolitan portable binary
     ssh_login                             # bundled, Cosmopolitan portable binary
     systemd_unit                          # bundled, Cosmopolitan portable binary
-/var/cache/notifyd/                       # https:// cached scripts
+/var/cache/barker/                       # https:// cached scripts
     a1b2c3d4e5f6...                       # named by sha256
     f6e5d4c3b2a1...
-/var/log/notifyd/
-    notifyd.log                           # daemon log
+/var/log/barker/
+    barker.log                           # daemon log
 ```
 
 **User-local (non-root):**
 
 ```
-~/.local/bin/notifyd                      # binary
-~/.config/notifyd/
+~/.local/bin/barker                      # binary
+~/.config/barker/
   config.yaml
   checks/
-~/.cache/notifyd/                         # https:// cached scripts
-~/.local/state/notifyd/logs/              # daemon log
+~/.cache/barker/                         # https:// cached scripts
+~/.local/state/barker/logs/              # daemon log
 ```
 
-`notifyd init` places files according to whether it's running as root or not.
+`barker init` places files according to whether it's running as root or not.
 
 ---
 
@@ -73,9 +73,9 @@ The daemon looks for config in this order:
 ```yaml
 # Directories — have sensible defaults, user can override
 dirs:
-  checks: /etc/notifyd/checks         # file:// resolves relative to this
-  cache: /var/cache/notifyd            # https:// cached scripts
-  logs: /var/log/notifyd               # daemon logs
+  checks: /etc/barker/checks         # file:// resolves relative to this
+  cache: /var/cache/barker            # https:// cached scripts
+  logs: /var/log/barker               # daemon logs
 
 # Global options
 hostname: vps-01                       # optional, defaults to system hostname
@@ -114,7 +114,7 @@ alerts:
     notify: [telegram, logfile]
 
   - name: ssl_expiry
-    check: https://raw.githubusercontent.com/notifyd/checks/v1.0.0/ssl_check
+    check: https://raw.githubusercontent.com/barker-app/checks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
       interval: 6h
@@ -195,7 +195,7 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 #### When `sha256: false` (unpinned):
 
 - Script is fetched once per daemon start and cached in memory/temp.
-- Re-fetched on `notifyd validate`.
+- Re-fetched on `barker validate`.
 - Pinned scripts survive restarts, unpinned scripts don't.
 
 ### `sha256` Summary
@@ -260,7 +260,7 @@ flowchart TD
 
 ```yaml
 - name: ssl_expiry
-  check: https://github.com/notifyd/checks/releases/download/v1.0.0/ssl_check
+  check: https://github.com/barker-app/checks/releases/download/v1.0.0/ssl_check
   sha256: a1b2c3d4e5f6...
   trigger:
     interval: 6h
@@ -298,7 +298,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Daemon starts or\nnotifyd validate] --> B[Attempt HTTPS download]
+    A[Daemon starts or\nbarker validate] --> B[Attempt HTTPS download]
     B --> C{Download successful?}
     C -->|Yes| D[Cache check in\nmemory/temp for\nthis session]
     C -->|No| E[⚠️ Log warning:\ndownload failed]
@@ -328,9 +328,9 @@ flowchart TD
     B --> C[Unpinned checks will be\nre-fetched on next start]
 ```
 
-### Bundled Scripts and `notifyd init`
+### Bundled Scripts and `barker init`
 
-Official check scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `notifyd init`:
+Official check scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `barker init`:
 
 1. Official checks are downloaded from the official repository and placed into `dirs.checks` as local files.
 2. Cached versions are also placed in `dirs.cache` with their sha256 filenames.
@@ -338,14 +338,14 @@ Official check scripts are written in C and compiled with Cosmopolitan Libc into
 
 Result: works offline immediately after init. The config references canonical HTTPS URLs but the cache is pre-populated. Since official checks are Cosmopolitan portable binaries, the same URL and sha256 work on any architecture — configs are fully portable across machines.
 
-Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community check. They just happen to live in the official repository (e.g. `github.com/notifyd/checks`) and are pre-cached on init as a convenience.
+Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community check. They just happen to live in the official repository (e.g. `github.com/barker-app/checks`) and are pre-cached on init as a convenience.
 
-Example of what `notifyd init` generates:
+Example of what `barker init` generates:
 
 ```yaml
 alerts:
   - name: disk_check
-    check: https://raw.githubusercontent.com/notifyd/checks/v1.0.0/disk_usage
+    check: https://raw.githubusercontent.com/barker-app/checks/v1.0.0/disk_usage
     sha256: a1b2c3d4e5f6...
     trigger:
       interval: 30s
@@ -431,18 +431,18 @@ Daemon metadata (set by the daemon):
 
 | Variable | Description | Set for |
 |---|---|---|
-| `NOTIFYD_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
-| `NOTIFYD_FILE` | Watched file path | watch only |
-| `NOTIFYD_LINE_COUNT` | Number of new lines | watch only |
+| `BARKER_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
+| `BARKER_FILE` | Watched file path | watch only |
+| `BARKER_LINE_COUNT` | Number of new lines | watch only |
 
-User args (from config `args`, prefixed with `NOTIFYD_ARG_`):
+User args (from config `args`, prefixed with `BARKER_ARG_`):
 
 | Config | Environment variable |
 |---|---|
-| `threshold_warn: 0.80` | `NOTIFYD_ARG_THRESHOLD_WARN=0.80` |
-| `mount: /` | `NOTIFYD_ARG_MOUNT=/` |
+| `threshold_warn: 0.80` | `BARKER_ARG_THRESHOLD_WARN=0.80` |
+| `mount: /` | `BARKER_ARG_MOUNT=/` |
 
-Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `NOTIFYD_ARG_THRESHOLD_WARN`).
+Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `BARKER_ARG_THRESHOLD_WARN`).
 
 **Stdin:**
 
@@ -453,7 +453,7 @@ Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`,
 
 **Format:** `KEY=VALUE` pairs, one per line. Split on first `=` only. Lines without `=` are ignored.
 
-**Reserved keys (NOTIFYD_ prefix):**
+**Reserved keys (BARKER_ prefix):**
 
 | Key | Required | Values | Description |
 |---|---|---|---|
@@ -490,7 +490,7 @@ The daemon treats all checks identically. The distinction between bundled and us
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
-| Daemon (`notifyd`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
+| Daemon (`barker`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
 | Official checks        | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
 | User/community checks  | Anything              | User's choice and responsibility               |
 
@@ -502,9 +502,9 @@ Each check (official or community) should document its arguments, outputs, and s
 disk_usage
 
 Arguments (config → env):
-  threshold_warn  → NOTIFYD_ARG_THRESHOLD_WARN  - percentage as float for warning
-  threshold_crit  → NOTIFYD_ARG_THRESHOLD_CRIT  - percentage as float for critical
-  mount           → NOTIFYD_ARG_MOUNT           - mount point to check
+  threshold_warn  → BARKER_ARG_THRESHOLD_WARN  - percentage as float for warning
+  threshold_crit  → BARKER_ARG_THRESHOLD_CRIT  - percentage as float for critical
+  mount           → BARKER_ARG_MOUNT           - mount point to check
 
 Outputs:
   status    - "ok", "warning", or "critical"
@@ -512,8 +512,8 @@ Outputs:
   available       - remaining space
 
 Status logic:
-  usage >= NOTIFYD_ARG_THRESHOLD_CRIT → status=critical
-  usage >= NOTIFYD_ARG_THRESHOLD_WARN → status=warning
+  usage >= BARKER_ARG_THRESHOLD_CRIT → status=critical
+  usage >= BARKER_ARG_THRESHOLD_WARN → status=warning
   otherwise                           → status=ok
 ```
 
@@ -542,13 +542,13 @@ checks/
 ### Example: interval check invocation
 
 ```
-NOTIFYD_TRIGGER=interval NOTIFYD_ARG_THRESHOLD_WARN=0.80 NOTIFYD_ARG_MOUNT=/ /etc/notifyd/checks/disk_usage
+BARKER_TRIGGER=interval BARKER_ARG_THRESHOLD_WARN=0.80 BARKER_ARG_MOUNT=/ /etc/barker/checks/disk_usage
 ```
 
 ### Example: watch check invocation
 
 ```
-NOTIFYD_TRIGGER=watch NOTIFYD_FILE=/var/log/auth.log NOTIFYD_LINE_COUNT=3 NOTIFYD_ARG_WATCH=all NOTIFYD_ARG_EXCLUDE_USERS=deploy /etc/notifyd/checks/ssh_login <<< "line1\nline2\nline3"
+BARKER_TRIGGER=watch BARKER_FILE=/var/log/auth.log BARKER_LINE_COUNT=3 BARKER_ARG_WATCH=all BARKER_ARG_EXCLUDE_USERS=deploy /etc/barker/checks/ssh_login <<< "line1\nline2\nline3"
 ```
 
 ---
@@ -634,24 +634,24 @@ t=4:00  check → warning  → notify (cooldowns were reset, fresh incident)
 
 ## CLI Commands
 
-### `notifyd init`
+### `barker init`
 
-Generates default config if it doesn't exist, then runs `notifyd validate`.
+Generates default config if it doesn't exist, then runs `barker validate`.
 
-- Detects root vs non-root and places files accordingly (`/etc/notifyd/` vs `~/.config/notifyd/`).
+- Detects root vs non-root and places files accordingly (`/etc/barker/` vs `~/.config/barker/`).
 - Downloads official checks from the official repository and pre-populates the cache.
 - Does nothing if config already exists (will not overwrite).
 
-### `notifyd start`
+### `barker start`
 
-Runs `notifyd validate` first, then starts the daemon in the foreground. Reads config, starts all alert intervals and file watchers, runs until interrupted.
+Runs `barker validate` first, then starts the daemon in the foreground. Reads config, starts all alert intervals and file watchers, runs until interrupted.
 
 **Signal handling:**
 - **SIGINT** (Ctrl+C) — graceful shutdown. Finishes any currently running checks, then exits.
 - **SIGTERM** (systemd stop) — graceful shutdown. Same behavior as SIGINT.
 - **SIGHUP** — triggers `validate` logic: re-reads config, re-fetches unpinned `https://` checks. If validation fails, the reload is rejected and the daemon continues with the previous config.
 
-### `notifyd validate`
+### `barker validate`
 
 Validates and syncs the current config:
 
@@ -662,20 +662,20 @@ Validates and syncs the current config:
 - Fetches/re-fetches all `https://` checks (pinned: only if not cached; unpinned: always).
 - Reports errors and exits non-zero if anything fails.
 
-Used automatically by `notifyd init` and `notifyd start`. Can be run standalone for CI/deploy pipelines.
+Used automatically by `barker init` and `barker start`. Can be run standalone for CI/deploy pipelines.
 
-### `notifyd run <alert_name>`
+### `barker run <alert_name>`
 
 Manually triggers a specific alert once. Runs the check, renders the template, and sends notifications to configured services. Ignores the trigger type — just executes the check immediately.
 
 For checks that expect stdin (file watch checks), pipe input manually:
 
 ```
-$ echo "some log line" | notifyd run ssh_login
+$ echo "some log line" | barker run ssh_login
 ```
 
 ```
-$ notifyd run disk_check
+$ barker run disk_check
 ✓ Check: file://disk_usage
   Output:
     status=warning
@@ -689,7 +689,7 @@ $ notifyd run disk_check
 Use `--dry-run` to skip sending notifications:
 
 ```
-$ notifyd run disk_check --dry-run
+$ barker run disk_check --dry-run
 ✓ Check: file://disk_usage
   Output:
     status=warning
@@ -700,14 +700,14 @@ $ notifyd run disk_check --dry-run
   Would notify: telegram, logfile
 ```
 
-This allows notifyd to be used as a standalone one-shot tool (e.g. from cron) without running the daemon.
+This allows barker to be used as a standalone one-shot tool (e.g. from cron) without running the daemon.
 
-### `notifyd hash <file>`
+### `barker hash <file>`
 
 Prints the sha256 hash of a file. Convenience for users adding pinned checks to their config.
 
 ```
-$ notifyd hash checks/disk_usage
+$ barker hash checks/disk_usage
 a1b2c3d4e5f6789...
 ```
 
