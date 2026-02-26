@@ -12,6 +12,13 @@ Barker is intentionally dumb. The daemon is a generic executor — it runs any e
 - **Official checks:** C compiled with Cosmopolitan Libc (portable single binaries, direct syscalls, zero dependencies) — a convenience, not a requirement
 - **User checks:** Any executable that outputs `KEY=VALUE` lines to stdout with a required `status` key — first-class, identical interface to official checks
 
+## Key Dependencies
+
+- **CLI:** `spf13/cobra` — command structure, flags, args
+- **Config loading:** `goccy/go-yaml` — YAML decoding with strict mode and validator integration (not viper — see `docs/dependencies.md`)
+- **Config validation:** `go-playground/validator` — struct tag validation, plugs into goccy/go-yaml's `StructValidator` interface for line-number-aware errors
+- **Notifications:** `containrrr/shoutrrr` — multi-service notification delivery
+
 ## Docs
 
 Specification lives in `docs/`:
@@ -23,3 +30,4 @@ Specification lives in `docs/`:
 - `cooldown.md` — cooldown config, behavior, timeline example
 - `cli.md` — init, start, validate, run, hash commands
 - `notifications.md` — templates, Sprig functions, variable interpolation, service options, Shoutrrr delivery
+- `dependencies.md` — dependency choices and rationale (viper vs goccy/go-yaml, validator options)
