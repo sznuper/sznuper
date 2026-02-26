@@ -135,6 +135,13 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 	log.Debug("templates rendered", "targets", len(targets))
 
 	// Stage 5: Send notifications (or validate dry-run).
+	// Skip notification when status is "ok" — only "warning" and "critical" notify.
+	if parsed.Status == "ok" {
+		result.Duration = time.Since(start)
+		log.Info("status ok, skipping notifications")
+		return result
+	}
+
 	for _, t := range targets {
 		if dryRun {
 			if err := notify.Validate(t); err != nil {
