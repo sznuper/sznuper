@@ -6,7 +6,7 @@ hostname: vps-01
 services:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
-    options:
+    params:
       chats: ${TELEGRAM_CHAT_ID}
 
 alerts:
@@ -16,6 +16,6 @@ alerts:
       interval: 30s
     timeout: 10s
     cooldown: 5m
-    template: "{{check.status | upper}} {{globals.hostname}}: Disk at {{check.usage}}%"
+    template: "{{check.status | upper}} {{globals.hostname}}: Disk at {{check.usage_percent}}%"
     notify:
       - telegram

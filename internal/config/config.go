@@ -22,8 +22,8 @@ type Dirs struct {
 }
 
 type Service struct {
-	URL     string            `yaml:"url"`
-	Options map[string]string `yaml:"options"`
+	URL    string            `yaml:"url"`
+	Params map[string]string `yaml:"params"`
 }
 
 type Alert struct {
@@ -103,7 +103,7 @@ type cooldownObj struct {
 type NotifyTarget struct {
 	Service  string            `yaml:"service"`
 	Template string            `yaml:"template"`
-	Options  map[string]string `yaml:"options"`
+	Params   map[string]string `yaml:"params"`
 }
 
 func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
@@ -116,7 +116,7 @@ func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
 	type notifyAlias NotifyTarget
 	var obj notifyAlias
 	if err := unmarshal(&obj); err != nil {
-		return fmt.Errorf("notify: must be a service name string or an object with service/template/options")
+		return fmt.Errorf("notify: must be a service name string or an object with service/template/params")
 	}
 	*n = NotifyTarget(obj)
 	return nil

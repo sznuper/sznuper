@@ -134,11 +134,18 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 	}
 	log.Debug("templates rendered", "targets", len(targets))
 
-	// Stage 5: Send notifications (or record dry-run).
+	// Stage 5: Send notifications (or validate dry-run).
 	for _, t := range targets {
 		if dryRun {
+			if err := notify.Validate(t); err != nil {
+				result.Err = err
+				result.ErrStage = "notify"
+				result.Duration = time.Since(start)
+				log.Error("notify validation failed (dry-run)", "service", t.ServiceName, "error", err)
+				return result
+			}
 			result.Notified = append(result.Notified, t.ServiceName)
-			log.Info("would notify (dry-run)", "service", t.ServiceName, "message", t.Message)
+			log.Debug("would notify (dry-run)", "service", t.ServiceName, "message", t.Message)
 			continue
 		}
 
@@ -176,7 +183,7 @@ func mapNotifyRefs(targets []config.NotifyTarget) []notify.NotifyRef {
 		refs[i] = notify.NotifyRef{
 			ServiceName: t.Service,
 			Template:    t.Template,
-			Options:     t.Options,
+			Params:      t.Params,
 		}
 	}
 	return refs
@@ -186,8 +193,8 @@ func mapServiceDefs(services map[string]config.Service) map[string]notify.Servic
 	defs := make(map[string]notify.ServiceDef, len(services))
 	for name, svc := range services {
 		defs[name] = notify.ServiceDef{
-			URL:     svc.URL,
-			Options: svc.Options,
+			URL:    svc.URL,
+			Params: svc.Params,
 		}
 	}
 	return defs

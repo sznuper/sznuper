@@ -32,8 +32,8 @@ func TestLoadExampleConfig(t *testing.T) {
 	if want := "telegram://bot123:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw@telegram"; svc.URL != want {
 		t.Errorf("service url = %q, want %q", svc.URL, want)
 	}
-	if svc.Options["chats"] != "-100123456789" {
-		t.Errorf("service options[chats] = %q, want %q", svc.Options["chats"], "-100123456789")
+	if svc.Params["chats"] != "-100123456789" {
+		t.Errorf("service params[chats] = %q, want %q", svc.Params["chats"], "-100123456789")
 	}
 
 	if len(cfg.Alerts) != 1 {
@@ -151,7 +151,7 @@ alerts:
       - logfile
       - service: telegram
         template: "*bold*"
-        options:
+        params:
           parsemode: MarkdownV2
 `
 	cfg := loadFromString(t, yml)
@@ -173,8 +173,8 @@ alerts:
 	if notify[1].Template != "*bold*" {
 		t.Errorf("notify[1] template = %q, want %q", notify[1].Template, "*bold*")
 	}
-	if notify[1].Options["parsemode"] != "MarkdownV2" {
-		t.Errorf("notify[1] options = %v, want parsemode=MarkdownV2", notify[1].Options)
+	if notify[1].Params["parsemode"] != "MarkdownV2" {
+		t.Errorf("notify[1] params = %v, want parsemode=MarkdownV2", notify[1].Params)
 	}
 }
 
