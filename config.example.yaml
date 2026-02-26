@@ -5,7 +5,9 @@ hostname: vps-01
 
 services:
   telegram:
-    url: telegram://${TELEGRAM_TOKEN}@telegram?channels=${TELEGRAM_CHAT_ID}
+    url: telegram://${TELEGRAM_TOKEN}@telegram
+    options:
+      chats: ${TELEGRAM_CHAT_ID}
 
 alerts:
   - name: disk_check

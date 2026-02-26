@@ -29,8 +29,11 @@ func TestLoadExampleConfig(t *testing.T) {
 	if !ok {
 		t.Fatal("missing service 'telegram'")
 	}
-	if want := "telegram://bot123:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw@telegram?channels=-100123456789"; svc.URL != want {
+	if want := "telegram://bot123:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw@telegram"; svc.URL != want {
 		t.Errorf("service url = %q, want %q", svc.URL, want)
+	}
+	if svc.Options["chats"] != "-100123456789" {
+		t.Errorf("service options[chats] = %q, want %q", svc.Options["chats"], "-100123456789")
 	}
 
 	if len(cfg.Alerts) != 1 {
