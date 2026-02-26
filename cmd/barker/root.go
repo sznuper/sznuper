@@ -1,9 +1,8 @@
 package main
 
-import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-)
+import "github.com/spf13/cobra"
+
+var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "barker",
@@ -12,6 +11,5 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().String("config", "", "config file path")
-	_ = viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
 }
