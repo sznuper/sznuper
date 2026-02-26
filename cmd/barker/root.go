@@ -1,8 +1,16 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"log/slog"
+	"os"
 
-var cfgFile string
+	"github.com/spf13/cobra"
+)
+
+var (
+	cfgFile string
+	verbose bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "barker",
@@ -12,4 +20,13 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable debug logging")
+}
+
+func setupLogger() *slog.Logger {
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 }
