@@ -23,7 +23,7 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho status=warning\necho usage=84\n")
 
 	cfg := &config.Config{
-		Options: config.Options{ChecksDir: dir},
+		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "test-host"},
 		Services: map[string]config.Service{
 			"logger": {URL: "logger://"},
@@ -31,8 +31,8 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 		Alerts: []config.Alert{
 			{
 				Name:     "test_alert",
-				Check:    "file://check.sh",
-				Template: `{{check.status | upper}} {{globals.hostname}}: usage={{check.usage}}%`,
+				Healthcheck:    "file://check.sh",
+				Template: `{{healthcheck.status | upper}} {{globals.hostname}}: usage={{healthcheck.usage}}%`,
 				Notify:   []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
@@ -64,10 +64,10 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 
 func TestRunAlert_ResolveFails(t *testing.T) {
 	cfg := &config.Config{
-		Options: config.Options{ChecksDir: t.TempDir()},
+		Options: config.Options{HealthchecksDir: t.TempDir()},
 		Globals: map[string]any{"hostname": "host"},
 		Alerts: []config.Alert{
-			{Name: "bad", Check: "file://nonexistent"},
+			{Name: "bad", Healthcheck: "file://nonexistent"},
 		},
 	}
 
@@ -88,10 +88,10 @@ func TestRunAlert_ParseFails(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho no_status_key=here\n")
 
 	cfg := &config.Config{
-		Options: config.Options{ChecksDir: dir},
+		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "host"},
 		Alerts: []config.Alert{
-			{Name: "bad_parse", Check: "file://check.sh", Template: "test"},
+			{Name: "bad_parse", Healthcheck: "file://check.sh", Template: "test"},
 		},
 	}
 
@@ -131,14 +131,14 @@ func TestRunAll(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
 
 	cfg := &config.Config{
-		Options: config.Options{ChecksDir: dir},
+		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "host"},
 		Services: map[string]config.Service{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
-			{Name: "a1", Check: "file://check.sh", Template: "msg1", Notify: []config.NotifyTarget{{Service: "logger"}}},
-			{Name: "a2", Check: "file://check.sh", Template: "msg2", Notify: []config.NotifyTarget{{Service: "logger"}}},
+			{Name: "a1", Healthcheck: "file://check.sh", Template: "msg1", Notify: []config.NotifyTarget{{Service: "logger"}}},
+			{Name: "a2", Healthcheck: "file://check.sh", Template: "msg2", Notify: []config.NotifyTarget{{Service: "logger"}}},
 		},
 	}
 

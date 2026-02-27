@@ -10,7 +10,7 @@ func TestRender_Basic(t *testing.T) {
 		map[string]any{"mount": "/"},
 	)
 
-	result, err := Render(`{{check.status | upper}} {{globals.hostname}}: Disk at {{check.usage}}%`, data)
+	result, err := Render(`{{healthcheck.status | upper}} {{globals.hostname}}: Disk at {{healthcheck.usage}}%`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestRender_StatusEmoji(t *testing.T) {
 	for _, tt := range tests {
 		data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 			map[string]string{"status": tt.status}, nil)
-		result, err := Render(`{{check.status_emoji}}`, data)
+		result, err := Render(`{{healthcheck.status_emoji}}`, data)
 		if err != nil {
 			t.Fatalf("unexpected error for %s: %v", tt.status, err)
 		}
@@ -74,7 +74,7 @@ func TestRender_SprigFunctions(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok", "msg": "hello"}, nil)
 
-	result, err := Render(`{{check.msg | upper | repeat 2}}`, data)
+	result, err := Render(`{{healthcheck.msg | upper | repeat 2}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestRender_InvalidTemplate(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
-	_, err := Render(`{{check.status | nonexistent}}`, data)
+	_, err := Render(`{{healthcheck.status | nonexistent}}`, data)
 	if err == nil {
 		t.Fatal("expected error for invalid template function")
 	}

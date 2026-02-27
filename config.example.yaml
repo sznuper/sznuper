@@ -1,5 +1,5 @@
 options:
-  checks_dir: /home/niar/checks
+  healthchecks_dir: /home/niar/healthchecks
 
 globals:
   hostname: vps-01
@@ -12,13 +12,13 @@ services:
 
 alerts:
   - name: disk_check
-    check: file://disk_usage
+    healthcheck: file://disk_usage
     trigger:
       interval: 30s
     timeout: 10s
     cooldown: 5m
     template: |-
-      [{{check.status | upper}}] {{globals.hostname}} {{check.used}}:
-      Disk at {{check.usage_percent}}%
+      [{{healthcheck.status | upper}}] {{globals.hostname}} {{healthcheck.used}}:
+      Disk at {{healthcheck.usage_percent}}%
     notify:
       - telegram

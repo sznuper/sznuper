@@ -1,12 +1,12 @@
-# sznuper — Checks
+# sznuper — Healthchecks
 
-## Check URI Schemes
+## Healthcheck URI Schemes
 
 ### `file://`
 
 Runs a local executable directly.
 
-- `file://disk_usage` — relative to `dirs.checks`
+- `file://disk_usage` — relative to `dirs.healthchecks`
 - `file:///usr/local/bin/my_check.py` — absolute path
 
 Behavior:
@@ -48,26 +48,26 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 | `https://` | required       | —         | Hash string: fetch once, cache forever.           |
 | `https://` | required       | —         | `false`: fetch once per daemon start, no persist. |
 
-### Check Lifecycle Flowcharts
+### Healthcheck Lifecycle Flowcharts
 
 #### 1. `file://` without sha256 (default)
 
 ```yaml
 - name: disk_check
-  check: file://disk_usage
+  healthcheck: file://disk_usage
   trigger:
     interval: 30s
 ```
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{File exists at\ndirs.checks/disk_usage ?}
+    A[Alert triggered] --> B{File exists at\ndirs.healthchecks/disk_usage ?}
     B -->|No| C[❌ Alert errors out\nLog: file not found]
     B -->|Yes| D{File is executable?}
     D -->|No| E[❌ Alert errors out\nLog: not executable]
-    D -->|Yes| F[Run check with\nenv vars + stdin]
+    D -->|Yes| F[Run healthcheck with\nenv vars + stdin]
     F --> G{status\nin output?}
-    G -->|Missing| H[⚠️ Log error\nCheck is broken]
+    G -->|Missing| H[⚠️ Log error\nHealthcheck is broken]
     G -->|ok| I[No notification\nMaybe recovery]
     G -->|warning/critical| J[Send notification\nto services]
 ```
@@ -76,7 +76,7 @@ flowchart TD
 
 ```yaml
 - name: disk_check
-  check: file://disk_usage
+  healthcheck: file://disk_usage
   sha256: b7e4f2c8d1a9...
   trigger:
     interval: 30s
@@ -84,16 +84,16 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{File exists at\ndirs.checks/disk_usage ?}
+    A[Alert triggered] --> B{File exists at\ndirs.healthchecks/disk_usage ?}
     B -->|No| C[❌ Alert errors out\nLog: file not found]
     B -->|Yes| D{File is executable?}
     D -->|No| E[❌ Alert errors out\nLog: not executable]
     D -->|Yes| F[Compute sha256\nof file on disk]
     F --> G{Hash matches config?}
     G -->|No| H[❌ Alert errors out\nLog: hash mismatch\nfile may have been tampered with]
-    G -->|Yes| I[Run check with\nenv vars + stdin]
+    G -->|Yes| I[Run healthcheck with\nenv vars + stdin]
     I --> J{status\nin output?}
-    J -->|Missing| K[⚠️ Log error\nCheck is broken]
+    J -->|Missing| K[⚠️ Log error\nHealthcheck is broken]
     J -->|ok| L[No notification\nMaybe recovery]
     J -->|warning/critical| M[Send notification\nto services]
 ```
@@ -102,7 +102,7 @@ flowchart TD
 
 ```yaml
 - name: ssl_expiry
-  check: https://github.com/sznuper/checks/releases/download/v1.0.0/ssl_check
+  healthcheck: https://github.com/sznuper/healthchecks/releases/download/v1.0.0/ssl_check
   sha256: a1b2c3d4e5f6...
   trigger:
     interval: 6h
@@ -111,7 +111,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Alert triggered] --> B{File exists in cache as\ndirs.cache/a1b2c3d4e5f6... ?}
-    B -->|Yes| F[Run cached check with\nenv vars + stdin]
+    B -->|Yes| F[Run cached healthcheck with\nenv vars + stdin]
     B -->|No| C[Attempt HTTPS download]
     C --> D{Download successful?}
     D -->|No| E[❌ Alert errors out\nLog: download failed\nand no cache available]
@@ -121,7 +121,7 @@ flowchart TD
     H -->|Yes| J[Save to dirs.cache/a1b2c3d4e5f6...\nMark as executable]
     J --> F
     F --> K{status\nin output?}
-    K -->|Missing| L[⚠️ Log error\nCheck is broken]
+    K -->|Missing| L[⚠️ Log error\nHealthcheck is broken]
     K -->|ok| M[No notification\nMaybe recovery]
     K -->|warning/critical| N[Send notification\nto services]
 ```
@@ -130,7 +130,7 @@ flowchart TD
 
 ```yaml
 - name: experimental_check
-  check: https://example.com/beta_check.sh
+  healthcheck: https://example.com/beta_check.sh
   sha256: false
   trigger:
     interval: 1h
@@ -142,10 +142,10 @@ flowchart TD
 flowchart TD
     A[Daemon starts or\nsznuper validate] --> B[Attempt HTTPS download]
     B --> C{Download successful?}
-    C -->|Yes| D[Cache check in\nmemory/temp for\nthis session]
+    C -->|Yes| D[Cache healthcheck in\nmemory/temp for\nthis session]
     C -->|No| E[⚠️ Log warning:\ndownload failed]
     E --> F{Previous session\ncache exists in temp?}
-    F -->|No| G[⚠️ Alert disabled\nfor this session\nLog: no check available]
+    F -->|No| G[⚠️ Alert disabled\nfor this session\nLog: no healthcheck available]
     F -->|Yes| H[⚠️ Use stale cache\nLog warning]
 ```
 
@@ -153,11 +153,11 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{Check available\nin session cache?}
-    B -->|No| C[❌ Alert errors out\nLog: no check available]
-    B -->|Yes| D[Run cached check with\nenv vars + stdin]
+    A[Alert triggered] --> B{Healthcheck available\nin session cache?}
+    B -->|No| C[❌ Alert errors out\nLog: no healthcheck available]
+    B -->|Yes| D[Run cached healthcheck with\nenv vars + stdin]
     D --> E{status\nin output?}
-    E -->|Missing| F[⚠️ Log error\nCheck is broken]
+    E -->|Missing| F[⚠️ Log error\nHealthcheck is broken]
     E -->|ok| G[No notification\nMaybe recovery]
     E -->|warning/critical| H[Send notification\nto services]
 ```
@@ -167,27 +167,27 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Daemon stops] --> B[Session cache discarded]
-    B --> C[Unpinned checks will be\nre-fetched on next start]
+    B --> C[Unpinned healthchecks will be\nre-fetched on next start]
 ```
 
 ### Bundled Scripts and `sznuper init`
 
-Official check scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `sznuper init`:
+Official healthcheck scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `sznuper init`:
 
-1. Official checks are downloaded from the official repository and placed into `dirs.checks` as local files.
+1. Official healthchecks are downloaded from the official repository and placed into `dirs.healthchecks` as local files.
 2. Cached versions are also placed in `dirs.cache` with their sha256 filenames.
 3. Default config is generated referencing the official repo HTTPS URLs with matching sha256 values.
 
-Result: works offline immediately after init. The config references canonical HTTPS URLs but the cache is pre-populated. Since official checks are Cosmopolitan portable binaries, the same URL and sha256 work on any architecture — configs are fully portable across machines.
+Result: works offline immediately after init. The config references canonical HTTPS URLs but the cache is pre-populated. Since official healthchecks are Cosmopolitan portable binaries, the same URL and sha256 work on any architecture — configs are fully portable across machines.
 
-Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community check. They just happen to live in the official repository (e.g. `github.com/sznuper/checks`) and are pre-cached on init as a convenience.
+Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community healthcheck. They just happen to live in the official repository (e.g. `github.com/sznuper/healthchecks`) and are pre-cached on init as a convenience.
 
 Example of what `sznuper init` generates:
 
 ```yaml
 alerts:
   - name: disk_check
-    check: https://raw.githubusercontent.com/sznuper/checks/v1.0.0/disk_usage
+    healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/disk_usage
     sha256: a1b2c3d4e5f6...
     trigger:
       interval: 30s
@@ -199,7 +199,7 @@ alerts:
       warning: 10m
       critical: 1m
       recovery: true
-    template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{check.usage}}%"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
     notify: [telegram]
 ```
 
@@ -207,7 +207,7 @@ The user can also change the URI to `file://disk_usage` to use the local copy di
 
 ---
 
-## Check Interface
+## Healthcheck Interface
 
 ### Input
 
@@ -243,18 +243,18 @@ Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`,
 
 | Key | Required | Values | Description |
 |---|---|---|---|
-| `status` | **yes** | `ok`, `warning`, `critical` | The check result. Drives notifications and cooldown. |
+| `status` | **yes** | `ok`, `warning`, `critical` | The healthcheck result. Drives notifications and cooldown. |
 
-If `status` is missing from output, the check is considered broken — logged as error, never triggers a notification.
+If `status` is missing from output, the healthcheck is considered broken — logged as error, never triggers a notification.
 
 | `status` | Meaning | Notification? |
 |---|---|---|
 | `ok` | No problem | Only if recovery enabled |
 | `warning` | Problem, needs attention | Yes |
 | `critical` | Urgent problem | Yes |
-| (missing) | Check is broken | Log error, never notify |
+| (missing) | Healthcheck is broken | Log error, never notify |
 
-**Check-specific keys (no prefix, user-defined):**
+**Healthcheck-specific keys (no prefix, user-defined):**
 
 ```
 status=warning
@@ -262,27 +262,27 @@ usage=84
 available=8G
 ```
 
-### Check Types
+### Healthcheck Types
 
-A check is any executable file. The daemon does not care about the language or runtime — it executes the file and reads stdout.
+A healthcheck is any executable file. The daemon does not care about the language or runtime — it executes the file and reads stdout.
 
-**Official bundled checks** are written in C and compiled with [Cosmopolitan Libc](https://github.com/jart/cosmopolitan) into Actually Portable Executables. Each check is a single binary that runs on any architecture (x86_64, aarch64) and any Linux distribution. They use direct syscalls (`statvfs()`, `/proc/stat`, `/proc/meminfo`, etc.) with zero external dependencies — no `df`, no `awk`, no runtime needed. This means one binary per check, one URL, one sha256, and the same config works across machines regardless of architecture.
+**Official bundled healthchecks** are written in C and compiled with [Cosmopolitan Libc](https://github.com/jart/cosmopolitan) into Actually Portable Executables. Each healthcheck is a single binary that runs on any architecture (x86_64, aarch64) and any Linux distribution. They use direct syscalls (`statvfs()`, `/proc/stat`, `/proc/meminfo`, etc.) with zero external dependencies — no `df`, no `awk`, no runtime needed. This means one binary per healthcheck, one URL, one sha256, and the same config works across machines regardless of architecture.
 
-**Community and user checks** can be anything: Go, Rust, Python, Node.js, Bash, C — whatever the user has on their system. Shell scripts are supported but not recommended for shared checks due to portability concerns (reliance on `awk`, `df`, `bc`, etc. varying across distributions). Cosmopolitan C is recommended for checks intended to be distributed.
+**Community and user healthchecks** can be anything: Go, Rust, Python, Node.js, Bash, C — whatever the user has on their system. Shell scripts are supported but not recommended for shared healthchecks due to portability concerns (reliance on `awk`, `df`, `bc`, etc. varying across distributions). Cosmopolitan C is recommended for healthchecks intended to be distributed.
 
-The daemon treats all checks identically. The distinction between bundled and user checks only matters at distribution time.
+The daemon treats all healthchecks identically. The distinction between bundled and user healthchecks only matters at distribution time.
 
 ### Technology Stack
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
 | Daemon (`sznuper`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
-| Official checks        | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
-| User/community checks  | Anything              | User's choice and responsibility               |
+| Official healthchecks   | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
+| User/community healthchecks | Anything          | User's choice and responsibility               |
 
-### Documenting Check Interfaces
+### Documenting Healthcheck Interfaces
 
-Each check (official or community) should document its arguments, outputs, and status logic. Example for the official `disk_usage` check:
+Each healthcheck (official or community) should document its arguments, outputs, and status logic. Example for the official `disk_usage` healthcheck:
 
 ```
 disk_usage
@@ -303,12 +303,12 @@ Status logic:
   otherwise                           → status=ok
 ```
 
-This tells the user exactly what to put in `args`, what `{{check.*}}` variables are available for templates, and what status values to expect for cooldown configuration.
+This tells the user exactly what to put in `args`, what `{{healthcheck.*}}` variables are available for templates, and what status values to expect for cooldown configuration.
 
-### Example: bundled checks (Cosmopolitan C, single portable binary each)
+### Example: bundled healthchecks (Cosmopolitan C, single portable binary each)
 
 ```
-checks/
+healthchecks/
   disk_usage          # runs on any arch
   cpu_usage           # runs on any arch
   memory_usage        # runs on any arch
@@ -316,23 +316,23 @@ checks/
   systemd_unit        # runs on any arch
 ```
 
-### Example: user checks (any executable)
+### Example: user healthchecks (any executable)
 
 ```
-checks/
+healthchecks/
   my_custom_check.sh      # bash
   ssl_verify.py           # python
   api_health              # compiled Go/Rust/C
 ```
 
-### Example: interval check invocation
+### Example: interval healthcheck invocation
 
 ```
-SZNUPER_TRIGGER=interval SZNUPER_ARG_THRESHOLD_WARN=0.80 SZNUPER_ARG_MOUNT=/ /etc/sznuper/checks/disk_usage
+SZNUPER_TRIGGER=interval SZNUPER_ARG_THRESHOLD_WARN=0.80 SZNUPER_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
-### Example: watch check invocation
+### Example: watch healthcheck invocation
 
 ```
-SZNUPER_TRIGGER=watch SZNUPER_FILE=/var/log/auth.log SZNUPER_LINE_COUNT=3 SZNUPER_ARG_WATCH=all SZNUPER_ARG_EXCLUDE_USERS=deploy /etc/sznuper/checks/ssh_login <<< "line1\nline2\nline3"
+SZNUPER_TRIGGER=watch SZNUPER_FILE=/var/log/auth.log SZNUPER_LINE_COUNT=3 SZNUPER_ARG_WATCH=all SZNUPER_ARG_EXCLUDE_USERS=deploy /etc/sznuper/healthchecks/ssh_login <<< "line1\nline2\nline3"
 ```

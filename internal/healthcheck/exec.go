@@ -1,4 +1,4 @@
-package check
+package healthcheck
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// ExecResult holds the output of executing a check.
+// ExecResult holds the output of executing a healthcheck.
 type ExecResult struct {
 	Stdout   string
 	Stderr   string
@@ -17,7 +17,7 @@ type ExecResult struct {
 	ExitCode int
 }
 
-// ExecOpts configures check execution.
+// ExecOpts configures healthcheck execution.
 type ExecOpts struct {
 	Path        string
 	Timeout     time.Duration
@@ -26,7 +26,7 @@ type ExecOpts struct {
 	Stdin       []byte
 }
 
-// Exec runs a check executable and captures its output.
+// Exec runs a healthcheck executable and captures its output.
 // Non-zero exit codes are captured (not treated as errors).
 // Timeouts are treated as errors.
 func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
@@ -59,13 +59,13 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return result, fmt.Errorf("check timed out after %s", opts.Timeout)
+			return result, fmt.Errorf("healthcheck timed out after %s", opts.Timeout)
 		}
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 			return result, nil
 		}
-		return result, fmt.Errorf("executing check: %w", err)
+		return result, fmt.Errorf("executing healthcheck: %w", err)
 	}
 
 	return result, nil

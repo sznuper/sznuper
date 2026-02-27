@@ -16,9 +16,9 @@ type Config struct {
 }
 
 type Options struct {
-	ChecksDir string `yaml:"checks_dir"`
-	CacheDir  string `yaml:"cache_dir"`
-	LogsDir   string `yaml:"logs_dir"`
+	HealthchecksDir string `yaml:"healthchecks_dir"`
+	CacheDir        string `yaml:"cache_dir"`
+	LogsDir         string `yaml:"logs_dir"`
 }
 
 type Service struct {
@@ -28,7 +28,7 @@ type Service struct {
 
 type Alert struct {
 	Name     string         `yaml:"name"`
-	Check    string         `yaml:"check"`
+	Healthcheck string      `yaml:"healthcheck"`
 	SHA256   SHA256         `yaml:"sha256"`
 	Trigger  Trigger        `yaml:"trigger"`
 	Timeout  string         `yaml:"timeout"`

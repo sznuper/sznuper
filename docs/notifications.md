@@ -2,10 +2,10 @@
 
 ## Notification Templates
 
-Alert templates define the message body sent to services. Templates are Go [`text/template`](https://pkg.go.dev/text/template) strings with [Sprig](https://masterminds.github.io/sprig/) functions, resolved at notification time when the check has run.
+Alert templates define the message body sent to services. Templates are Go [`text/template`](https://pkg.go.dev/text/template) strings with [Sprig](https://masterminds.github.io/sprig/) functions, resolved at notification time when the healthcheck has run.
 
 ```yaml
-template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{check.usage}}%"
+template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
 ```
 
 **Available template variables:**
@@ -14,38 +14,38 @@ template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at
 |---|---|
 | `{{globals.hostname}}` | Global `hostname` or system hostname |
 | `{{alert.name}}` | Alert's `name` field |
-| `{{check.*}}` | All key-value pairs from check stdout (including `{{check.status}}`) |
-| `{{check.status_emoji}}` | Derived from `check.status`: 🔴 critical, 🟡 warning, 🟢 ok |
+| `{{healthcheck.*}}` | All key-value pairs from healthcheck stdout (including `{{healthcheck.status}}`) |
+| `{{healthcheck.status_emoji}}` | Derived from `healthcheck.status`: 🔴 critical, 🟡 warning, 🟢 ok |
 | `{{args.*}}` | Args from alert config |
 
-All check output values are strings. Use `atoi` or `float64` for numeric operations.
+All healthcheck output values are strings. Use `atoi` or `float64` for numeric operations.
 
-`check.status_emoji` is a **derived variable** — computed by the daemon from `check.status`, not from check output. A check cannot override it.
+`healthcheck.status_emoji` is a **derived variable** — computed by the daemon from `healthcheck.status`, not from healthcheck output. A healthcheck cannot override it.
 
 **Sprig functions are available for advanced formatting:**
 
 ```yaml
 # String manipulation
-template: "{{check.status | upper}} on {{globals.hostname}}"                   # "WARNING on vps-01"
+template: "{{healthcheck.status | upper}} on {{globals.hostname}}"                   # "WARNING on vps-01"
 
 # Conditionals
 template: >
-  {{check.status_emoji}}
-  {{globals.hostname}}: Disk at {{check.usage}}%
+  {{healthcheck.status_emoji}}
+  {{globals.hostname}}: Disk at {{healthcheck.usage}}%
 
 # Math
-template: "{{check.available_bytes | float64 | div 1073741824 | printf \"%.1f\"}}GB remaining"
+template: "{{healthcheck.available_bytes | float64 | div 1073741824 | printf \"%.1f\"}}GB remaining"
 
 # Default values
 template: "{{args.mount | default \"/\"}}"
 
 # Date/time
-template: "{{now | date \"15:04\"}} {{check.status | upper}} {{globals.hostname}}"
+template: "{{now | date \"15:04\"}} {{healthcheck.status | upper}} {{globals.hostname}}"
 ```
 
 See [Sprig documentation](https://masterminds.github.io/sprig/) for the full list of available functions.
 
-`template` is a required field. Each check defines its own output keys, so a meaningful template must be written per alert.
+`template` is a required field. Each healthcheck defines its own output keys, so a meaningful template must be written per alert.
 
 ### Per-Service Template Overrides
 
@@ -54,7 +54,7 @@ The top-level `template` is the default message body for all services. Individua
 ```yaml
 alerts:
   - name: disk_check
-    check: file://disk_usage
+    healthcheck: file://disk_usage
     trigger:
       interval: 30s
     args:
@@ -64,19 +64,19 @@ alerts:
     cooldown:
       warning: 10m
       critical: 1m
-    template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{check.usage}}%"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
     notify:
       - logfile
       - ops-slack
       - service: telegram
-        template: "*{{check.status | upper}}* `{{globals.hostname}}`: Disk {{args.mount}} at {{check.usage}}%"
+        template: "*{{healthcheck.status | upper}}* `{{globals.hostname}}`: Disk {{args.mount}} at {{healthcheck.usage}}%"
         options:
           parsemode: MarkdownV2
-          notification: "{{if eq check.status \"warning\"}}false{{else}}true{{end}}"
+          notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
       - service: email
-        template: "Disk {{args.mount}} is at {{check.usage}}%\n\nHost: {{globals.hostname}}\nAvailable: {{check.available}}"
+        template: "Disk {{args.mount}} is at {{healthcheck.usage}}%\n\nHost: {{globals.hostname}}\nAvailable: {{healthcheck.available}}"
         options:
-          subject: "[{{check.status | upper}}] {{globals.hostname}}: {{alert.name}}"
+          subject: "[{{healthcheck.status | upper}}] {{globals.hostname}}: {{alert.name}}"
 ```
 
 **Template resolution:** alert.notify[].template → alert.template
@@ -103,12 +103,12 @@ services:
 
 **`{{...}}` — template variables, resolved at notification time.**
 
-Populated from globals, alert config, and check output when a notification is sent.
+Populated from globals, alert config, and healthcheck output when a notification is sent.
 
 ```yaml
 alerts:
   - name: disk_check
-    template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{check.usage}}%"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
 ```
 
 ---
@@ -140,7 +140,7 @@ notify:
       notification: true     # override telegram's default for this alert
 ```
 
-Options values support `{{...}}` template variables for dynamic behavior based on check output.
+Options values support `{{...}}` template variables for dynamic behavior based on healthcheck output.
 
 ---
 
@@ -163,5 +163,5 @@ Shoutrrr handles the actual delivery. The daemon does not interpret service opti
 ## Language
 
 - **Daemon:** Go. Key dependencies: Shoutrrr (notification delivery), fsnotify (file watching), robfig/cron (cron scheduling), Sprig (template functions), envsubst (env var interpolation).
-- **Official checks:** C compiled with Cosmopolitan Libc. Produces single portable binaries that run on any Linux architecture. Direct syscalls for system metrics, zero external dependencies.
-- **User checks:** Any language. The daemon executes any file with the executable bit set.
+- **Official healthchecks:** C compiled with Cosmopolitan Libc. Produces single portable binaries that run on any Linux architecture. Direct syscalls for system metrics, zero external dependencies.
+- **User healthchecks:** Any language. The daemon executes any file with the executable bit set.

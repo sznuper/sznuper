@@ -20,8 +20,8 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Errorf("globals[hostname] = %q, want %q", cfg.Globals["hostname"], "vps-01")
 	}
 
-	if cfg.Options.ChecksDir != "/home/niar/checks" {
-		t.Errorf("options.checks_dir = %q, want %q", cfg.Options.ChecksDir, "/home/niar/checks")
+	if cfg.Options.HealthchecksDir != "/home/niar/healthchecks" {
+		t.Errorf("options.healthchecks_dir = %q, want %q", cfg.Options.HealthchecksDir, "/home/niar/healthchecks")
 	}
 
 	// envsubst in service URL
@@ -43,8 +43,8 @@ func TestLoadExampleConfig(t *testing.T) {
 	if a.Name != "disk_check" {
 		t.Errorf("alert name = %q, want %q", a.Name, "disk_check")
 	}
-	if a.Check != "file://disk_usage" {
-		t.Errorf("alert check = %q, want %q", a.Check, "file://disk_usage")
+	if a.Healthcheck != "file://disk_usage" {
+		t.Errorf("alert healthcheck = %q, want %q", a.Healthcheck, "file://disk_usage")
 	}
 	if a.Trigger.Interval != "30s" {
 		t.Errorf("trigger interval = %q, want %q", a.Trigger.Interval, "30s")
@@ -68,7 +68,7 @@ func TestCooldownStructured(t *testing.T) {
 	yml := `
 alerts:
   - name: test
-    check: file://test
+    healthcheck: file://test
     trigger:
       interval: 1m
     cooldown:
@@ -99,7 +99,7 @@ func TestSHA256False(t *testing.T) {
 	yml := `
 alerts:
   - name: test
-    check: https://example.com/check
+    healthcheck: https://example.com/check
     sha256: false
     trigger:
       interval: 1h
@@ -121,7 +121,7 @@ func TestSHA256String(t *testing.T) {
 	yml := `
 alerts:
   - name: test
-    check: https://example.com/check
+    healthcheck: https://example.com/check
     sha256: a1b2c3d4e5f6
     trigger:
       interval: 1h
@@ -143,7 +143,7 @@ func TestNotifyMixed(t *testing.T) {
 	yml := `
 alerts:
   - name: test
-    check: file://test
+    healthcheck: file://test
     trigger:
       interval: 1m
     template: "test"

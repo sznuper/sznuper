@@ -16,7 +16,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 		map[string]any{"mount": "/"},
 	)
 
-	targets, err := ResolveTargets(refs, services, `{{check.status | upper}} {{globals.hostname}}`, data)
+	targets, err := ResolveTargets(refs, services, `{{healthcheck.status | upper}} {{globals.hostname}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,12 +36,12 @@ func TestResolveTargets_TemplateOverride(t *testing.T) {
 		"telegram": {URL: "telegram://token@telegram"},
 	}
 	refs := []NotifyRef{
-		{ServiceName: "telegram", Template: `CUSTOM: {{check.status}}`},
+		{ServiceName: "telegram", Template: `CUSTOM: {{healthcheck.status}}`},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
-	targets, err := ResolveTargets(refs, services, `DEFAULT: {{check.status}}`, data)
+	targets, err := ResolveTargets(refs, services, `DEFAULT: {{healthcheck.status}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 	refs := []NotifyRef{
 		{
 			ServiceName: "email",
-			Params:      map[string]string{"subject": `[{{check.status | upper}}] {{globals.hostname}}`},
+			Params:      map[string]string{"subject": `[{{healthcheck.status | upper}}] {{globals.hostname}}`},
 		},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "alert",

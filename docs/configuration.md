@@ -15,7 +15,7 @@ The daemon looks for config in this order:
 /usr/bin/sznuper                          # binary
 /etc/sznuper/
   config.yaml                             # main config
-  checks/                                 # file:// checks
+  healthchecks/                            # file:// healthchecks
     disk_usage                            # bundled, Cosmopolitan portable binary
     cpu_usage                             # bundled, Cosmopolitan portable binary
     memory_usage                          # bundled, Cosmopolitan portable binary
@@ -34,7 +34,7 @@ The daemon looks for config in this order:
 ~/.local/bin/sznuper                      # binary
 ~/.config/sznuper/
   config.yaml
-  checks/
+  healthchecks/
 ~/.cache/sznuper/                         # https:// cached scripts
 ~/.local/state/sznuper/logs/              # daemon log
 ```
@@ -48,7 +48,7 @@ The daemon looks for config in this order:
 ```yaml
 # Directories — have sensible defaults, user can override
 dirs:
-  checks: /etc/sznuper/checks         # file:// resolves relative to this
+  healthchecks: /etc/sznuper/healthchecks  # file:// resolves relative to this
   cache: /var/cache/sznuper            # https:// cached scripts
   logs: /var/log/sznuper               # daemon logs
 
@@ -74,7 +74,7 @@ services:
 # Alerts
 alerts:
   - name: disk_check
-    check: file://disk_usage
+    healthcheck: file://disk_usage
     trigger:
       interval: 30s
     args:
@@ -85,48 +85,48 @@ alerts:
       warning: 10m
       critical: 1m
       recovery: true
-    template: "{{check.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{check.usage}}% ({{check.available}} remaining)"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}% ({{healthcheck.available}} remaining)"
     notify: [telegram, logfile]
 
   - name: ssl_expiry
-    check: https://raw.githubusercontent.com/sznuper/checks/v1.0.0/ssl_check
+    healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
       interval: 6h
-    template: "{{check.status | upper}} {{globals.hostname}}: Certificate for {{check.domain}} expires in {{check.days_left}} days"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Certificate for {{healthcheck.domain}} expires in {{healthcheck.days_left}} days"
     notify: [telegram]
 
   - name: experimental_check
-    check: https://example.com/beta_check.sh
+    healthcheck: https://example.com/beta_check.sh
     sha256: false                         # explicit opt-out, re-fetched on daemon start
     trigger:
       interval: 1h
-    template: "{{check.status | upper}} {{globals.hostname}}: {{check.message}}"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: {{healthcheck.message}}"
     notify: [logfile]
 
   - name: ssh_login
-    check: file://ssh_login
+    healthcheck: file://ssh_login
     trigger:
       watch: /var/log/auth.log
     timeout: 30s
     args:
       watch: all
       exclude_users: deploy
-    template: "{{check.status | upper}} {{globals.hostname}}: SSH login by {{check.user}} from {{check.ip}}"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: SSH login by {{healthcheck.user}} from {{healthcheck.ip}}"
     notify: [telegram]
 
   # Per-alert service override with template conditionals
   - name: postgres_down
-    check: file://systemd_unit
+    healthcheck: file://systemd_unit
     trigger:
       interval: 15s
     args:
       units: postgresql
-    template: "{{check.status | upper}} {{globals.hostname}}: Unit {{check.unit}} is {{check.state}}"
+    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Unit {{healthcheck.unit}} is {{healthcheck.state}}"
     notify:
       - logfile
       - ops-slack
       - service: telegram
         options:
-          notification: "{{if eq check.status \"warning\"}}false{{else}}true{{end}}"
+          notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
 ```

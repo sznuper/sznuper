@@ -62,7 +62,7 @@ func init() {
 
 func printResult(r runner.Result) {
 	if r.Err != nil {
-		fmt.Printf("✗ Check: %s\n", r.CheckURI)
+		fmt.Printf("✗ Healthcheck: %s\n", r.HealthcheckURI)
 		fmt.Printf("  Error (%s): %s\n", r.ErrStage, r.Err)
 		if r.Stderr != "" {
 			fmt.Printf("  Stderr: %s\n", r.Stderr)
@@ -70,7 +70,7 @@ func printResult(r runner.Result) {
 		return
 	}
 
-	fmt.Printf("✓ Check: %s\n", r.CheckURI)
+	fmt.Printf("✓ Healthcheck: %s\n", r.HealthcheckURI)
 	if len(r.Output) > 0 {
 		fmt.Println("  Output:")
 		for _, line := range r.Output {

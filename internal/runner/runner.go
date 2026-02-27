@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/sznuper/sznuper/internal/check"
+	"github.com/sznuper/sznuper/internal/healthcheck"
 	"github.com/sznuper/sznuper/internal/config"
 	"github.com/sznuper/sznuper/internal/notify"
 )
 
-// Runner orchestrates the check → parse → template → notify pipeline.
+// Runner orchestrates the healthcheck → parse → template → notify pipeline.
 type Runner struct {
 	cfg    *config.Config
 	logger *slog.Logger
@@ -46,14 +46,14 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 	start := time.Now()
 
 	result := Result{
-		AlertName: alert.Name,
-		CheckURI:  alert.Check,
-		DryRun:    dryRun,
+		AlertName:      alert.Name,
+		HealthcheckURI: alert.Healthcheck,
+		DryRun:         dryRun,
 	}
 
-	// Stage 1: Resolve check URI.
-	log.Info("resolving check", "uri", alert.Check)
-	resolved, err := check.Resolve(alert.Check, r.cfg.Options.ChecksDir)
+	// Stage 1: Resolve healthcheck URI.
+	log.Info("resolving healthcheck", "uri", alert.Healthcheck)
+	resolved, err := healthcheck.Resolve(alert.Healthcheck, r.cfg.Options.HealthchecksDir)
 	if err != nil {
 		result.Err = err
 		result.ErrStage = "resolve"
@@ -61,14 +61,14 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 		log.Error("resolve failed", "error", err)
 		return result
 	}
-	result.CheckPath = resolved.Path
-	log.Debug("check resolved", "path", resolved.Path, "scheme", resolved.Scheme)
+	result.HealthcheckPath = resolved.Path
+	log.Debug("healthcheck resolved", "path", resolved.Path, "scheme", resolved.Scheme)
 
-	// Stage 2: Execute check.
+	// Stage 2: Execute healthcheck.
 	timeout, _ := time.ParseDuration(alert.Timeout)
-	log.Info("executing check", "path", resolved.Path, "timeout", timeout)
+	log.Info("executing healthcheck", "path", resolved.Path, "timeout", timeout)
 
-	execResult, err := check.Exec(ctx, check.ExecOpts{
+	execResult, err := healthcheck.Exec(ctx, healthcheck.ExecOpts{
 		Path:        resolved.Path,
 		Timeout:     timeout,
 		TriggerType: detectTriggerType(alert.Trigger),
@@ -85,11 +85,11 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 		return result
 	}
 	result.Stderr = execResult.Stderr
-	log.Debug("check executed", "exit_code", execResult.ExitCode, "duration", execResult.Duration, "stderr", execResult.Stderr)
+	log.Debug("healthcheck executed", "exit_code", execResult.ExitCode, "duration", execResult.Duration, "stderr", execResult.Stderr)
 
 	// Stage 3: Parse output.
 	log.Info("parsing output")
-	parsed, err := check.Parse(execResult.Stdout)
+	parsed, err := healthcheck.Parse(execResult.Stdout)
 	if err != nil {
 		result.Err = err
 		result.ErrStage = "parse"

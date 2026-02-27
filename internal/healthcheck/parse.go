@@ -1,18 +1,18 @@
-package check
+package healthcheck
 
 import (
 	"fmt"
 	"strings"
 )
 
-// ParsedOutput holds the parsed key-value output from a check.
+// ParsedOutput holds the parsed key-value output from a healthcheck.
 type ParsedOutput struct {
 	Status string
 	Fields map[string]string
 	Lines  []string
 }
 
-// Parse parses KEY=VALUE lines from check stdout.
+// Parse parses KEY=VALUE lines from healthcheck stdout.
 // Lines without '=' are ignored. The "status" key is required.
 func Parse(stdout string) (*ParsedOutput, error) {
 	out := &ParsedOutput{
@@ -42,7 +42,7 @@ func Parse(stdout string) (*ParsedOutput, error) {
 
 	status, ok := out.Fields["status"]
 	if !ok {
-		return nil, fmt.Errorf("check output missing required 'status' key")
+		return nil, fmt.Errorf("healthcheck output missing required 'status' key")
 	}
 	out.Status = status
 

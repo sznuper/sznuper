@@ -7,8 +7,8 @@ import "time"
 // has something to display.
 type Result struct {
 	AlertName string
-	CheckURI  string
-	CheckPath string
+	HealthcheckURI  string
+	HealthcheckPath string
 	Status    string            // "ok", "warning", "critical"
 	Output    []string          // ordered KEY=VALUE lines
 	Fields    map[string]string // parsed pairs
