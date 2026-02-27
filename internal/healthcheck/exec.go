@@ -73,11 +73,11 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 
 func buildEnv(opts ExecOpts) []string {
 	env := []string{
-		"SZNUPER_TRIGGER=" + opts.TriggerType,
+		"HEALTHCHECK_TRIGGER=" + opts.TriggerType,
 	}
 
 	for k, v := range opts.Args {
-		envKey := "SZNUPER_ARG_" + strings.ToUpper(k)
+		envKey := "HEALTHCHECK_ARG_" + strings.ToUpper(k)
 		env = append(env, envKey+"="+fmt.Sprint(v))
 	}
 

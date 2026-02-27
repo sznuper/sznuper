@@ -65,7 +65,7 @@ func TestExec_Timeout(t *testing.T) {
 }
 
 func TestExec_EnvArgs(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\necho trigger=$SZNUPER_TRIGGER\necho mount=$SZNUPER_ARG_MOUNT\n")
+	script := tempScript(t, "#!/bin/sh\necho status=ok\necho trigger=$HEALTHCHECK_TRIGGER\necho mount=$HEALTHCHECK_ARG_MOUNT\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,

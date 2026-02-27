@@ -217,18 +217,18 @@ Daemon metadata (set by the daemon):
 
 | Variable | Description | Set for |
 |---|---|---|
-| `SZNUPER_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
-| `SZNUPER_FILE` | Watched file path | watch only |
-| `SZNUPER_LINE_COUNT` | Number of new lines | watch only |
+| `HEALTHCHECK_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
+| `HEALTHCHECK_FILE` | Watched file path | watch only |
+| `HEALTHCHECK_LINE_COUNT` | Number of new lines | watch only |
 
-User args (from config `args`, prefixed with `SZNUPER_ARG_`):
+User args (from config `args`, prefixed with `HEALTHCHECK_ARG_`):
 
 | Config | Environment variable |
 |---|---|
-| `threshold_warn: 0.80` | `SZNUPER_ARG_THRESHOLD_WARN=0.80` |
-| `mount: /` | `SZNUPER_ARG_MOUNT=/` |
+| `threshold_warn: 0.80` | `HEALTHCHECK_ARG_THRESHOLD_WARN=0.80` |
+| `mount: /` | `HEALTHCHECK_ARG_MOUNT=/` |
 
-Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `SZNUPER_ARG_THRESHOLD_WARN`).
+Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `HEALTHCHECK_ARG_THRESHOLD_WARN`).
 
 **Stdin:**
 
@@ -239,7 +239,7 @@ Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`,
 
 **Format:** `KEY=VALUE` pairs, one per line. Split on first `=` only. Lines without `=` are ignored.
 
-**Reserved keys (SZNUPER_ prefix):**
+**Reserved keys (HEALTHCHECK_ prefix):**
 
 | Key | Required | Values | Description |
 |---|---|---|---|
@@ -288,9 +288,9 @@ Each healthcheck (official or community) should document its arguments, outputs,
 disk_usage
 
 Arguments (config → env):
-  threshold_warn  → SZNUPER_ARG_THRESHOLD_WARN  - percentage as float for warning
-  threshold_crit  → SZNUPER_ARG_THRESHOLD_CRIT  - percentage as float for critical
-  mount           → SZNUPER_ARG_MOUNT           - mount point to check
+  threshold_warn  → HEALTHCHECK_ARG_THRESHOLD_WARN  - percentage as float for warning
+  threshold_crit  → HEALTHCHECK_ARG_THRESHOLD_CRIT  - percentage as float for critical
+  mount           → HEALTHCHECK_ARG_MOUNT           - mount point to check
 
 Outputs:
   status    - "ok", "warning", or "critical"
@@ -298,8 +298,8 @@ Outputs:
   available       - remaining space
 
 Status logic:
-  usage >= SZNUPER_ARG_THRESHOLD_CRIT → status=critical
-  usage >= SZNUPER_ARG_THRESHOLD_WARN → status=warning
+  usage >= HEALTHCHECK_ARG_THRESHOLD_CRIT → status=critical
+  usage >= HEALTHCHECK_ARG_THRESHOLD_WARN → status=warning
   otherwise                           → status=ok
 ```
 
@@ -328,11 +328,11 @@ healthchecks/
 ### Example: interval healthcheck invocation
 
 ```
-SZNUPER_TRIGGER=interval SZNUPER_ARG_THRESHOLD_WARN=0.80 SZNUPER_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
+HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN=0.80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
 ### Example: watch healthcheck invocation
 
 ```
-SZNUPER_TRIGGER=watch SZNUPER_FILE=/var/log/auth.log SZNUPER_LINE_COUNT=3 SZNUPER_ARG_WATCH=all SZNUPER_ARG_EXCLUDE_USERS=deploy /etc/sznuper/healthchecks/ssh_login <<< "line1\nline2\nline3"
+HEALTHCHECK_TRIGGER=watch HEALTHCHECK_FILE=/var/log/auth.log HEALTHCHECK_LINE_COUNT=3 HEALTHCHECK_ARG_WATCH=all HEALTHCHECK_ARG_EXCLUDE_USERS=deploy /etc/sznuper/healthchecks/ssh_login <<< "line1\nline2\nline3"
 ```
