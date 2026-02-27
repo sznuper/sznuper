@@ -1,4 +1,4 @@
-module github.com/barker-app/barker
+module github.com/sznuper/sznuper
 
 go 1.26.0
 

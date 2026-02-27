@@ -8,7 +8,7 @@ import (
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the barker daemon",
+	Short: "Start the sznuper daemon",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("TODO: start")
 	},

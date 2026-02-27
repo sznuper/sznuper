@@ -8,7 +8,7 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate the barker configuration",
+	Short: "Validate the sznuper configuration",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("TODO: validate")
 	},

@@ -11,7 +11,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 	refs := []NotifyRef{
 		{ServiceName: "telegram"},
 	}
-	data := BuildTemplateData("vps-01", "disk_check",
+	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
 		map[string]string{"status": "warning", "usage": "84"},
 		map[string]any{"mount": "/"},
 	)
@@ -38,7 +38,7 @@ func TestResolveTargets_TemplateOverride(t *testing.T) {
 	refs := []NotifyRef{
 		{ServiceName: "telegram", Template: `CUSTOM: {{check.status}}`},
 	}
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `DEFAULT: {{check.status}}`, data)
@@ -63,7 +63,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 			Params:      map[string]string{"parsemode": "MarkdownV2"},
 		},
 	}
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `test`, data)
@@ -88,7 +88,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 			Params:      map[string]string{"subject": `[{{check.status | upper}}] {{globals.hostname}}`},
 		},
 	}
-	data := BuildTemplateData("vps-01", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "alert",
 		map[string]string{"status": "critical"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `body`, data)
@@ -103,7 +103,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 func TestResolveTargets_UnknownService(t *testing.T) {
 	services := map[string]ServiceDef{}
 	refs := []NotifyRef{{ServiceName: "nonexistent"}}
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	_, err := ResolveTargets(refs, services, `test`, data)
@@ -121,7 +121,7 @@ func TestResolveTargets_MultipleTargets(t *testing.T) {
 		{ServiceName: "telegram"},
 		{ServiceName: "slack"},
 	}
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `msg`, data)

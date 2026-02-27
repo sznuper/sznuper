@@ -10,18 +10,14 @@ import (
 
 // TemplateData holds all data available to notification templates.
 type TemplateData struct {
-	Globals map[string]string
+	Globals map[string]any
 	Alert   map[string]string
 	Check   map[string]string
 	Args    map[string]string
 }
 
 // BuildTemplateData constructs template data from check output and config.
-func BuildTemplateData(hostname, alertName string, checkFields map[string]string, args map[string]any) TemplateData {
-	globals := map[string]string{
-		"hostname": hostname,
-	}
-
+func BuildTemplateData(globals map[string]any, alertName string, checkFields map[string]string, args map[string]any) TemplateData {
 	alert := map[string]string{
 		"name": alertName,
 	}
@@ -68,7 +64,7 @@ func Render(tmplStr string, data TemplateData) (string, error) {
 	// Register accessor functions so {{check.status}} works:
 	// "check" returns the check map, then ".status" accesses a key.
 	funcMap["check"] = func() map[string]string { return data.Check }
-	funcMap["globals"] = func() map[string]string { return data.Globals }
+	funcMap["globals"] = func() map[string]any { return data.Globals }
 	funcMap["alert"] = func() map[string]string { return data.Alert }
 	funcMap["args"] = func() map[string]string { return data.Args }
 

@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/barker-app/barker/internal/config"
-	"github.com/barker-app/barker/internal/runner"
+	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/runner"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +24,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		applyOptionFlags(cmd, cfg)
 
 		r := runner.New(cfg, logger)
 		ctx := context.Background()

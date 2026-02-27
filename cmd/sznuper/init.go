@@ -8,7 +8,7 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize a new barker configuration",
+	Short: "Initialize a new sznuper configuration",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("TODO: init")
 	},

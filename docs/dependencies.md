@@ -1,4 +1,4 @@
-# barker — Dependency Decisions
+# sznuper — Dependency Decisions
 
 ## Config Loading & Validation
 
@@ -7,14 +7,14 @@
 
 ### Why not Viper?
 
-Viper is a multi-source config toolkit (YAML, TOML, HCL, env vars, remote config). Barker reads a single YAML file — Viper's features are unnecessary weight.
+Viper is a multi-source config toolkit (YAML, TOML, HCL, env vars, remote config). Sznuper reads a single YAML file — Viper's features are unnecessary weight.
 
 Practical problems:
 
 - **No built-in validation.** Open issue [#702](https://github.com/spf13/viper/issues/702) was closed as not planned.
 - **mapstructure indirection.** Viper decodes via `mapstructure`, not `yaml` tags. Requires triple struct tags (`yaml`, `mapstructure`, `validate`) or a `TagName` override hack.
 - **Lowercases all keys silently.** Can cause subtle mismatches.
-- **Large dependency tree.** Pulls in TOML, HCL, afero, etc. that Barker will never use.
+- **Large dependency tree.** Pulls in TOML, HCL, afero, etc. that Sznuper will never use.
 
 ### Why goccy/go-yaml?
 
@@ -26,7 +26,7 @@ Practical problems:
 ### Why go-playground/validator?
 
 - ~17k stars, battle-tested, de facto standard for Go struct validation.
-- Struct tags cover all Barker needs: `required`, `oneof`, `min`, `max`, `dive`, plus custom validators (e.g. duration parsing).
+- Struct tags cover all Sznuper needs: `required`, `oneof`, `min`, `max`, `dive`, plus custom validators (e.g. duration parsing).
 - Satisfies goccy/go-yaml's `StructValidator` interface directly — no adapter needed.
 
 ### Why not gozod?
@@ -35,7 +35,7 @@ Practical problems:
 
 - **18 stars, created mid-2025** — too early-stage, tiny community.
 - **Doesn't satisfy goccy/go-yaml's `StructValidator` interface** — would lose line-number error reporting.
-- **Fluent API solves a different problem** — great for runtime schema building, but Barker's config is a fixed struct where tags are the right tool.
+- **Fluent API solves a different problem** — great for runtime schema building, but Sznuper's config is a fixed struct where tags are the right tool.
 
 ### Usage Pattern
 

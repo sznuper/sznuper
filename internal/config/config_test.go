@@ -16,12 +16,12 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
-	if cfg.Hostname != "vps-01" {
-		t.Errorf("hostname = %q, want %q", cfg.Hostname, "vps-01")
+	if cfg.Globals["hostname"] != "vps-01" {
+		t.Errorf("globals[hostname] = %q, want %q", cfg.Globals["hostname"], "vps-01")
 	}
 
-	if cfg.Dirs == nil || cfg.Dirs.Checks != "/home/niar/checks" {
-		t.Errorf("dirs.checks = %v, want /home/niar/checks", cfg.Dirs)
+	if cfg.Options.ChecksDir != "/home/niar/checks" {
+		t.Errorf("options.checks_dir = %q, want %q", cfg.Options.ChecksDir, "/home/niar/checks")
 	}
 
 	// envsubst in service URL

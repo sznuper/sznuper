@@ -1,10 +1,10 @@
-# Barker
+# Sznuper
 
 Single-binary monitoring daemon for Linux. Runs checks, sends notifications via Shoutrrr. No database, no UI — just YAML config and a process.
 
 ## Design Philosophy
 
-Barker is intentionally dumb. The daemon is a generic executor — it runs any executable, reads `KEY=VALUE` stdout, and routes notifications. There are no special code paths for "official" vs "user" checks. Official checks are just pre-built conveniences distributed through the same `https://` + sha256 mechanism available to anyone. A user who writes their own checks from scratch uses the exact same interface and gets the same capabilities. Everything in the "official" architecture is user-extensible by design.
+Sznuper is intentionally dumb. The daemon is a generic executor — it runs any executable, reads `KEY=VALUE` stdout, and routes notifications. There are no special code paths for "official" vs "user" checks. Official checks are just pre-built conveniences distributed through the same `https://` + sha256 mechanism available to anyone. A user who writes their own checks from scratch uses the exact same interface and gets the same capabilities. Everything in the "official" architecture is user-extensible by design.
 
 ## Architecture
 

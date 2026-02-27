@@ -1,4 +1,4 @@
-# barker — Notifications
+# sznuper — Notifications
 
 ## Notification Templates
 

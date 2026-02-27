@@ -9,16 +9,16 @@ import (
 )
 
 type Config struct {
-	Dirs     *Dirs              `yaml:"dirs"`
-	Hostname string             `yaml:"hostname"`
+	Options  Options            `yaml:"options"`
+	Globals  map[string]any     `yaml:"globals"`
 	Services map[string]Service `yaml:"services"`
 	Alerts   []Alert            `yaml:"alerts"`
 }
 
-type Dirs struct {
-	Checks string `yaml:"checks"`
-	Cache  string `yaml:"cache"`
-	Logs   string `yaml:"logs"`
+type Options struct {
+	ChecksDir string `yaml:"checks_dir"`
+	CacheDir  string `yaml:"cache_dir"`
+	LogsDir   string `yaml:"logs_dir"`
 }
 
 type Service struct {

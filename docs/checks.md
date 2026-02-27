@@ -1,4 +1,4 @@
-# barker — Checks
+# sznuper — Checks
 
 ## Check URI Schemes
 
@@ -37,7 +37,7 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 #### When `sha256: false` (unpinned):
 
 - Script is fetched once per daemon start and cached in memory/temp.
-- Re-fetched on `barker validate`.
+- Re-fetched on `sznuper validate`.
 - Pinned scripts survive restarts, unpinned scripts don't.
 
 ### `sha256` Summary
@@ -102,7 +102,7 @@ flowchart TD
 
 ```yaml
 - name: ssl_expiry
-  check: https://github.com/barker-app/checks/releases/download/v1.0.0/ssl_check
+  check: https://github.com/sznuper/checks/releases/download/v1.0.0/ssl_check
   sha256: a1b2c3d4e5f6...
   trigger:
     interval: 6h
@@ -140,7 +140,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Daemon starts or\nbarker validate] --> B[Attempt HTTPS download]
+    A[Daemon starts or\nsznuper validate] --> B[Attempt HTTPS download]
     B --> C{Download successful?}
     C -->|Yes| D[Cache check in\nmemory/temp for\nthis session]
     C -->|No| E[⚠️ Log warning:\ndownload failed]
@@ -170,9 +170,9 @@ flowchart TD
     B --> C[Unpinned checks will be\nre-fetched on next start]
 ```
 
-### Bundled Scripts and `barker init`
+### Bundled Scripts and `sznuper init`
 
-Official check scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `barker init`:
+Official check scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `sznuper init`:
 
 1. Official checks are downloaded from the official repository and placed into `dirs.checks` as local files.
 2. Cached versions are also placed in `dirs.cache` with their sha256 filenames.
@@ -180,14 +180,14 @@ Official check scripts are written in C and compiled with Cosmopolitan Libc into
 
 Result: works offline immediately after init. The config references canonical HTTPS URLs but the cache is pre-populated. Since official checks are Cosmopolitan portable binaries, the same URL and sha256 work on any architecture — configs are fully portable across machines.
 
-Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community check. They just happen to live in the official repository (e.g. `github.com/barker-app/checks`) and are pre-cached on init as a convenience.
+Official scripts are not a special case. They are distributed via the same `https://` mechanism as any community check. They just happen to live in the official repository (e.g. `github.com/sznuper/checks`) and are pre-cached on init as a convenience.
 
-Example of what `barker init` generates:
+Example of what `sznuper init` generates:
 
 ```yaml
 alerts:
   - name: disk_check
-    check: https://raw.githubusercontent.com/barker-app/checks/v1.0.0/disk_usage
+    check: https://raw.githubusercontent.com/sznuper/checks/v1.0.0/disk_usage
     sha256: a1b2c3d4e5f6...
     trigger:
       interval: 30s
@@ -217,18 +217,18 @@ Daemon metadata (set by the daemon):
 
 | Variable | Description | Set for |
 |---|---|---|
-| `BARKER_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
-| `BARKER_FILE` | Watched file path | watch only |
-| `BARKER_LINE_COUNT` | Number of new lines | watch only |
+| `SZNUPER_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
+| `SZNUPER_FILE` | Watched file path | watch only |
+| `SZNUPER_LINE_COUNT` | Number of new lines | watch only |
 
-User args (from config `args`, prefixed with `BARKER_ARG_`):
+User args (from config `args`, prefixed with `SZNUPER_ARG_`):
 
 | Config | Environment variable |
 |---|---|
-| `threshold_warn: 0.80` | `BARKER_ARG_THRESHOLD_WARN=0.80` |
-| `mount: /` | `BARKER_ARG_MOUNT=/` |
+| `threshold_warn: 0.80` | `SZNUPER_ARG_THRESHOLD_WARN=0.80` |
+| `mount: /` | `SZNUPER_ARG_MOUNT=/` |
 
-Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `BARKER_ARG_THRESHOLD_WARN`).
+Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `SZNUPER_ARG_THRESHOLD_WARN`).
 
 **Stdin:**
 
@@ -239,7 +239,7 @@ Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`,
 
 **Format:** `KEY=VALUE` pairs, one per line. Split on first `=` only. Lines without `=` are ignored.
 
-**Reserved keys (BARKER_ prefix):**
+**Reserved keys (SZNUPER_ prefix):**
 
 | Key | Required | Values | Description |
 |---|---|---|---|
@@ -276,7 +276,7 @@ The daemon treats all checks identically. The distinction between bundled and us
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
-| Daemon (`barker`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
+| Daemon (`sznuper`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
 | Official checks        | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
 | User/community checks  | Anything              | User's choice and responsibility               |
 
@@ -288,9 +288,9 @@ Each check (official or community) should document its arguments, outputs, and s
 disk_usage
 
 Arguments (config → env):
-  threshold_warn  → BARKER_ARG_THRESHOLD_WARN  - percentage as float for warning
-  threshold_crit  → BARKER_ARG_THRESHOLD_CRIT  - percentage as float for critical
-  mount           → BARKER_ARG_MOUNT           - mount point to check
+  threshold_warn  → SZNUPER_ARG_THRESHOLD_WARN  - percentage as float for warning
+  threshold_crit  → SZNUPER_ARG_THRESHOLD_CRIT  - percentage as float for critical
+  mount           → SZNUPER_ARG_MOUNT           - mount point to check
 
 Outputs:
   status    - "ok", "warning", or "critical"
@@ -298,8 +298,8 @@ Outputs:
   available       - remaining space
 
 Status logic:
-  usage >= BARKER_ARG_THRESHOLD_CRIT → status=critical
-  usage >= BARKER_ARG_THRESHOLD_WARN → status=warning
+  usage >= SZNUPER_ARG_THRESHOLD_CRIT → status=critical
+  usage >= SZNUPER_ARG_THRESHOLD_WARN → status=warning
   otherwise                           → status=ok
 ```
 
@@ -328,11 +328,11 @@ checks/
 ### Example: interval check invocation
 
 ```
-BARKER_TRIGGER=interval BARKER_ARG_THRESHOLD_WARN=0.80 BARKER_ARG_MOUNT=/ /etc/barker/checks/disk_usage
+SZNUPER_TRIGGER=interval SZNUPER_ARG_THRESHOLD_WARN=0.80 SZNUPER_ARG_MOUNT=/ /etc/sznuper/checks/disk_usage
 ```
 
 ### Example: watch check invocation
 
 ```
-BARKER_TRIGGER=watch BARKER_FILE=/var/log/auth.log BARKER_LINE_COUNT=3 BARKER_ARG_WATCH=all BARKER_ARG_EXCLUDE_USERS=deploy /etc/barker/checks/ssh_login <<< "line1\nline2\nline3"
+SZNUPER_TRIGGER=watch SZNUPER_FILE=/var/log/auth.log SZNUPER_LINE_COUNT=3 SZNUPER_ARG_WATCH=all SZNUPER_ARG_EXCLUDE_USERS=deploy /etc/sznuper/checks/ssh_login <<< "line1\nline2\nline3"
 ```

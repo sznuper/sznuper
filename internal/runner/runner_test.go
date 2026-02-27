@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/barker-app/barker/internal/config"
+	"github.com/sznuper/sznuper/internal/config"
 )
 
 func writeScript(t *testing.T, dir, content string) {
@@ -23,8 +23,8 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho status=warning\necho usage=84\n")
 
 	cfg := &config.Config{
-		Dirs:     &config.Dirs{Checks: dir},
-		Hostname: "test-host",
+		Options: config.Options{ChecksDir: dir},
+		Globals: map[string]any{"hostname": "test-host"},
 		Services: map[string]config.Service{
 			"logger": {URL: "logger://"},
 		},
@@ -64,8 +64,8 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 
 func TestRunAlert_ResolveFails(t *testing.T) {
 	cfg := &config.Config{
-		Dirs:     &config.Dirs{Checks: t.TempDir()},
-		Hostname: "host",
+		Options: config.Options{ChecksDir: t.TempDir()},
+		Globals: map[string]any{"hostname": "host"},
 		Alerts: []config.Alert{
 			{Name: "bad", Check: "file://nonexistent"},
 		},
@@ -88,8 +88,8 @@ func TestRunAlert_ParseFails(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho no_status_key=here\n")
 
 	cfg := &config.Config{
-		Dirs:     &config.Dirs{Checks: dir},
-		Hostname: "host",
+		Options: config.Options{ChecksDir: dir},
+		Globals: map[string]any{"hostname": "host"},
 		Alerts: []config.Alert{
 			{Name: "bad_parse", Check: "file://check.sh", Template: "test"},
 		},
@@ -131,8 +131,8 @@ func TestRunAll(t *testing.T) {
 	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
 
 	cfg := &config.Config{
-		Dirs:     &config.Dirs{Checks: dir},
-		Hostname: "host",
+		Options: config.Options{ChecksDir: dir},
+		Globals: map[string]any{"hostname": "host"},
 		Services: map[string]config.Service{
 			"logger": {URL: "logger://"},
 		},

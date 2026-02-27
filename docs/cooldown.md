@@ -1,4 +1,4 @@
-# barker — Cooldown
+# sznuper — Cooldown
 
 Cooldown suppresses repeated notifications for the same status. Each status (`warning`, `critical`) has its own independent timer. Checks always run regardless of cooldown state — cooldown only affects whether a notification is sent.
 

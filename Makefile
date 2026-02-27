@@ -1,10 +1,10 @@
 .PHONY: build run test lint fmt vet tidy clean
 
 build:
-	go build -o barker ./cmd/barker
+	go build -o sznuper ./cmd/sznuper
 
 run:
-	go run ./cmd/barker
+	go run ./cmd/sznuper
 
 test:
 	go test -race ./...
@@ -27,4 +27,4 @@ tidy:
 	go mod tidy
 
 clean:
-	rm -f barker coverage.out
+	rm -f sznuper coverage.out

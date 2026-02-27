@@ -1,4 +1,4 @@
-# barker — Triggers
+# sznuper — Triggers
 
 ## Trigger Types
 

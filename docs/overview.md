@@ -1,6 +1,6 @@
-# barker — Overview
+# sznuper — Overview
 
-barker is a single-binary daemon that sits on a Linux host, watches for system events, and sends notifications to the places you care about. No dashboard, no database, no web UI — just a YAML config file and a process.
+sznuper is a single-binary daemon that sits on a Linux host, watches for system events, and sends notifications to the places you care about. No dashboard, no database, no web UI — just a YAML config file and a process.
 
 It runs a set of checks — some bundled (CPU, memory, disk, SSH logins, systemd unit failures), some user-defined (any executable that returns a status and key-value output). When a check triggers, it routes a notification through one or more services according to the config. It handles cooldowns, per-alert overrides, and templating so raw scripts don't have to.
 

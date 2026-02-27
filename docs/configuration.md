@@ -1,19 +1,19 @@
-# barker — Configuration
+# sznuper — Configuration
 
 ## Config File Location
 
 The daemon looks for config in this order:
-1. Explicit flag: `barker --config /path/to/config.yaml`
-2. User: `~/.config/barker/config.yaml`
-3. System: `/etc/barker/config.yaml`
+1. Explicit flag: `sznuper --config /path/to/config.yaml`
+2. User: `~/.config/sznuper/config.yaml`
+3. System: `/etc/sznuper/config.yaml`
 
 ## File Layout
 
 **System-wide (root):**
 
 ```
-/usr/bin/barker                          # binary
-/etc/barker/
+/usr/bin/sznuper                          # binary
+/etc/sznuper/
   config.yaml                             # main config
   checks/                                 # file:// checks
     disk_usage                            # bundled, Cosmopolitan portable binary
@@ -21,25 +21,25 @@ The daemon looks for config in this order:
     memory_usage                          # bundled, Cosmopolitan portable binary
     ssh_login                             # bundled, Cosmopolitan portable binary
     systemd_unit                          # bundled, Cosmopolitan portable binary
-/var/cache/barker/                       # https:// cached scripts
+/var/cache/sznuper/                       # https:// cached scripts
     a1b2c3d4e5f6...                       # named by sha256
     f6e5d4c3b2a1...
-/var/log/barker/
-    barker.log                           # daemon log
+/var/log/sznuper/
+    sznuper.log                           # daemon log
 ```
 
 **User-local (non-root):**
 
 ```
-~/.local/bin/barker                      # binary
-~/.config/barker/
+~/.local/bin/sznuper                      # binary
+~/.config/sznuper/
   config.yaml
   checks/
-~/.cache/barker/                         # https:// cached scripts
-~/.local/state/barker/logs/              # daemon log
+~/.cache/sznuper/                         # https:// cached scripts
+~/.local/state/sznuper/logs/              # daemon log
 ```
 
-`barker init` places files according to whether it's running as root or not.
+`sznuper init` places files according to whether it's running as root or not.
 
 ---
 
@@ -48,9 +48,9 @@ The daemon looks for config in this order:
 ```yaml
 # Directories — have sensible defaults, user can override
 dirs:
-  checks: /etc/barker/checks         # file:// resolves relative to this
-  cache: /var/cache/barker            # https:// cached scripts
-  logs: /var/log/barker               # daemon logs
+  checks: /etc/sznuper/checks         # file:// resolves relative to this
+  cache: /var/cache/sznuper            # https:// cached scripts
+  logs: /var/log/sznuper               # daemon logs
 
 # Global options
 hostname: vps-01                       # optional, defaults to system hostname
@@ -89,7 +89,7 @@ alerts:
     notify: [telegram, logfile]
 
   - name: ssl_expiry
-    check: https://raw.githubusercontent.com/barker-app/checks/v1.0.0/ssl_check
+    check: https://raw.githubusercontent.com/sznuper/checks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
       interval: 6h

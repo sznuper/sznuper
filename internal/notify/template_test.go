@@ -5,7 +5,7 @@ import (
 )
 
 func TestRender_Basic(t *testing.T) {
-	data := BuildTemplateData("vps-01", "disk_check",
+	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
 		map[string]string{"status": "warning", "usage": "84"},
 		map[string]any{"mount": "/"},
 	)
@@ -30,7 +30,7 @@ func TestRender_StatusEmoji(t *testing.T) {
 		{"unknown", "\u2753"},
 	}
 	for _, tt := range tests {
-		data := BuildTemplateData("host", "alert",
+		data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 			map[string]string{"status": tt.status}, nil)
 		result, err := Render(`{{check.status_emoji}}`, data)
 		if err != nil {
@@ -43,7 +43,7 @@ func TestRender_StatusEmoji(t *testing.T) {
 }
 
 func TestRender_ArgsAccess(t *testing.T) {
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"},
 		map[string]any{"mount": "/data", "threshold": 0.8},
 	)
@@ -58,7 +58,7 @@ func TestRender_ArgsAccess(t *testing.T) {
 }
 
 func TestRender_AlertName(t *testing.T) {
-	data := BuildTemplateData("host", "my_alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "my_alert",
 		map[string]string{"status": "ok"}, nil)
 
 	result, err := Render(`alert={{alert.name}}`, data)
@@ -71,7 +71,7 @@ func TestRender_AlertName(t *testing.T) {
 }
 
 func TestRender_SprigFunctions(t *testing.T) {
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok", "msg": "hello"}, nil)
 
 	result, err := Render(`{{check.msg | upper | repeat 2}}`, data)
@@ -84,7 +84,7 @@ func TestRender_SprigFunctions(t *testing.T) {
 }
 
 func TestRender_InvalidTemplate(t *testing.T) {
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	_, err := Render(`{{check.status | nonexistent}}`, data)
@@ -94,7 +94,7 @@ func TestRender_InvalidTemplate(t *testing.T) {
 }
 
 func TestBuildTemplateData_NilArgs(t *testing.T) {
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	if data.Args == nil {
@@ -103,7 +103,7 @@ func TestBuildTemplateData_NilArgs(t *testing.T) {
 }
 
 func TestRender_DefaultSprigFunc(t *testing.T) {
-	data := BuildTemplateData("host", "alert",
+	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"status": "ok"}, nil)
 
 	result, err := Render(`{{args.mount | default "/"}}`, data)

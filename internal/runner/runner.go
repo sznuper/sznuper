@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/barker-app/barker/internal/check"
-	"github.com/barker-app/barker/internal/config"
-	"github.com/barker-app/barker/internal/notify"
+	"github.com/sznuper/sznuper/internal/check"
+	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/notify"
 )
 
 // Runner orchestrates the check → parse → template → notify pipeline.
@@ -53,12 +53,7 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 
 	// Stage 1: Resolve check URI.
 	log.Info("resolving check", "uri", alert.Check)
-	checksDir := ""
-	if r.cfg.Dirs != nil {
-		checksDir = r.cfg.Dirs.Checks
-	}
-
-	resolved, err := check.Resolve(alert.Check, checksDir)
+	resolved, err := check.Resolve(alert.Check, r.cfg.Options.ChecksDir)
 	if err != nil {
 		result.Err = err
 		result.ErrStage = "resolve"
@@ -110,7 +105,7 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 	// Stage 4: Build template data and resolve targets.
 	log.Info("rendering templates")
 	tmplData := notify.BuildTemplateData(
-		r.cfg.Hostname,
+		r.cfg.Globals,
 		alert.Name,
 		parsed.Fields,
 		alert.Args,
