@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +18,7 @@ type ExecResult struct {
 	Stderr   string
 	Duration time.Duration
 	ExitCode int
+	Env      []string
 }
 
 // ExecOpts configures healthcheck execution.
@@ -44,7 +46,8 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 	} else {
 		cmd = exec.CommandContext(ctx, opts.Path)
 	}
-	cmd.Env = buildEnv(opts)
+	env := buildEnv(opts)
+	cmd.Env = env
 
 	if len(opts.Stdin) > 0 {
 		cmd.Stdin = bytes.NewReader(opts.Stdin)
@@ -62,6 +65,7 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 		Duration: duration,
+		Env:      env,
 	}
 
 	if err != nil {
@@ -100,8 +104,29 @@ func buildEnv(opts ExecOpts) []string {
 
 	for k, v := range opts.Args {
 		envKey := "HEALTHCHECK_ARG_" + strings.ToUpper(k)
-		env = append(env, envKey+"="+fmt.Sprint(v))
+		env = append(env, envKey+"="+formatArg(v))
 	}
 
 	return env
+}
+
+// formatArg converts a config arg value to a string, preserving the decimal
+// point for float values (e.g. 8.0 stays "8.0" instead of becoming "8").
+func formatArg(v any) string {
+	switch n := v.(type) {
+	case float64:
+		s := strconv.FormatFloat(n, 'f', -1, 64)
+		if !strings.Contains(s, ".") {
+			s += ".0"
+		}
+		return s
+	case float32:
+		s := strconv.FormatFloat(float64(n), 'f', -1, 32)
+		if !strings.Contains(s, ".") {
+			s += ".0"
+		}
+		return s
+	default:
+		return fmt.Sprint(v)
+	}
 }

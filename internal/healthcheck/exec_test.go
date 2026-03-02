@@ -3,6 +3,7 @@ package healthcheck
 import (
 	"context"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,150 @@ func TestExec_EnvArgs(t *testing.T) {
 	}
 	if !strings.Contains(result.Stdout, "mount=/data") {
 		t.Errorf("stdout missing mount=/data: %q", result.Stdout)
+	}
+}
+
+func TestFormatArg(t *testing.T) {
+	tests := []struct {
+		name string
+		val  any
+		want string
+	}{
+		// YAML decodes floats as float64
+		{"float64 with decimal", float64(7.9), "7.9"},
+		{"float64 whole number", float64(8.0), "8.0"},
+		{"float64 zero", float64(0.0), "0.0"},
+		{"float64 large", float64(100.0), "100.0"},
+		{"float64 precision", float64(3.14159), "3.14159"},
+
+		// YAML decodes integers as int
+		{"int positive", 42, "42"},
+		{"int zero", 0, "0"},
+		{"int negative", -1, "-1"},
+
+		// YAML decodes strings
+		{"string simple", "hello", "hello"},
+		{"string path", "/data", "/data"},
+		{"string empty", "", ""},
+
+		// YAML decodes booleans
+		{"bool true", true, "true"},
+		{"bool false", false, "false"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatArg(tt.val)
+			if got != tt.want {
+				t.Errorf("formatArg(%v) = %q, want %q", tt.val, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildEnv(t *testing.T) {
+	env := buildEnv(ExecOpts{
+		TriggerType: "cron",
+		Args: map[string]any{
+			"mount":                  "/data",
+			"threshold_warn_percent": float64(80.0),
+			"threshold_crit_percent": float64(95.5),
+			"raw":                    true,
+			"count":                  42,
+		},
+	})
+
+	sort.Strings(env)
+
+	want := []string{
+		"HEALTHCHECK_ARG_COUNT=42",
+		"HEALTHCHECK_ARG_MOUNT=/data",
+		"HEALTHCHECK_ARG_RAW=true",
+		"HEALTHCHECK_ARG_THRESHOLD_CRIT_PERCENT=95.5",
+		"HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80.0",
+		"HEALTHCHECK_TRIGGER=cron",
+	}
+
+	if len(env) != len(want) {
+		t.Fatalf("got %d env vars, want %d:\n  got:  %v\n  want: %v", len(env), len(want), env, want)
+	}
+	for i := range want {
+		if env[i] != want[i] {
+			t.Errorf("env[%d] = %q, want %q", i, env[i], want[i])
+		}
+	}
+}
+
+func TestBuildEnv_NoArgs(t *testing.T) {
+	env := buildEnv(ExecOpts{TriggerType: "interval"})
+	if len(env) != 1 {
+		t.Fatalf("got %d env vars, want 1: %v", len(env), env)
+	}
+	if env[0] != "HEALTHCHECK_TRIGGER=interval" {
+		t.Errorf("env[0] = %q, want HEALTHCHECK_TRIGGER=interval", env[0])
+	}
+}
+
+func TestExec_EnvArgTypes(t *testing.T) {
+	// Script echoes back all HEALTHCHECK_ARG_* env vars
+	script := tempScript(t, `#!/bin/sh
+echo status=ok
+echo float=$HEALTHCHECK_ARG_THRESHOLD
+echo int=$HEALTHCHECK_ARG_COUNT
+echo str=$HEALTHCHECK_ARG_MOUNT
+echo bool=$HEALTHCHECK_ARG_RAW
+`)
+
+	result, err := Exec(context.Background(), ExecOpts{
+		Path:        script,
+		TriggerType: "interval",
+		Args: map[string]any{
+			"threshold": float64(8.0),
+			"count":     42,
+			"mount":     "/data",
+			"raw":       true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	checks := map[string]string{
+		"float=8.0": "float arg should preserve .0",
+		"int=42":    "int arg should pass through",
+		"str=/data": "string arg should pass through",
+		"bool=true": "bool arg should pass through",
+	}
+	for substr, msg := range checks {
+		if !strings.Contains(result.Stdout, substr) {
+			t.Errorf("%s: stdout missing %q, got:\n%s", msg, substr, result.Stdout)
+		}
+	}
+}
+
+func TestExec_EnvInResult(t *testing.T) {
+	script := tempScript(t, "#!/bin/sh\necho status=ok\n")
+
+	result, err := Exec(context.Background(), ExecOpts{
+		Path:        script,
+		TriggerType: "interval",
+		Args:        map[string]any{"mount": "/"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Env) != 2 {
+		t.Fatalf("got %d env vars, want 2: %v", len(result.Env), result.Env)
+	}
+
+	found := false
+	for _, e := range result.Env {
+		if e == "HEALTHCHECK_ARG_MOUNT=/" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Env missing HEALTHCHECK_ARG_MOUNT=/, got: %v", result.Env)
 	}
 }
 

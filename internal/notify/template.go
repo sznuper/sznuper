@@ -10,10 +10,10 @@ import (
 
 // TemplateData holds all data available to notification templates.
 type TemplateData struct {
-	Globals map[string]any
-	Alert   map[string]string
+	Globals     map[string]any
+	Alert       map[string]string
 	Healthcheck map[string]string
-	Args    map[string]string
+	Args        map[string]string
 }
 
 // BuildTemplateData constructs template data from healthcheck output and config.

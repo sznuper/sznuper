@@ -27,15 +27,15 @@ type Service struct {
 }
 
 type Alert struct {
-	Name     string         `yaml:"name"`
-	Healthcheck string      `yaml:"healthcheck"`
-	SHA256   SHA256         `yaml:"sha256"`
-	Trigger  Trigger        `yaml:"trigger"`
-	Timeout  string         `yaml:"timeout"`
-	Args     map[string]any `yaml:"args"`
-	Cooldown Cooldown       `yaml:"cooldown"`
-	Template string         `yaml:"template"`
-	Notify   []NotifyTarget `yaml:"notify"`
+	Name        string         `yaml:"name"`
+	Healthcheck string         `yaml:"healthcheck"`
+	SHA256      SHA256         `yaml:"sha256"`
+	Trigger     Trigger        `yaml:"trigger"`
+	Timeout     string         `yaml:"timeout"`
+	Args        map[string]any `yaml:"args"`
+	Cooldown    Cooldown       `yaml:"cooldown"`
+	Template    string         `yaml:"template"`
+	Notify      []NotifyTarget `yaml:"notify"`
 }
 
 type Trigger struct {

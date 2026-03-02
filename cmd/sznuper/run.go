@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/sznuper/sznuper/internal/config"
 	"github.com/sznuper/sznuper/internal/runner"
-	"github.com/spf13/cobra"
 )
 
 var runCmd = &cobra.Command{
@@ -71,6 +71,12 @@ func printResult(r runner.Result) {
 	}
 
 	fmt.Printf("✓ Healthcheck: %s\n", r.HealthcheckURI)
+	if len(r.Env) > 0 {
+		fmt.Println("  Env:")
+		for _, e := range r.Env {
+			fmt.Printf("    %s\n", e)
+		}
+	}
 	if len(r.Output) > 0 {
 		fmt.Println("  Output:")
 		for _, line := range r.Output {

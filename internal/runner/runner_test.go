@@ -30,10 +30,10 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 		},
 		Alerts: []config.Alert{
 			{
-				Name:     "test_alert",
-				Healthcheck:    "file://check.sh",
-				Template: `{{healthcheck.status | upper}} {{globals.hostname}}: usage={{healthcheck.usage}}%`,
-				Notify:   []config.NotifyTarget{{Service: "logger"}},
+				Name:        "test_alert",
+				Healthcheck: "file://check.sh",
+				Template:    `{{healthcheck.status | upper}} {{globals.hostname}}: usage={{healthcheck.usage}}%`,
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
 	}

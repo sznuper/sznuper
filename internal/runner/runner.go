@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/sznuper/sznuper/internal/healthcheck"
 	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/healthcheck"
 	"github.com/sznuper/sznuper/internal/notify"
 )
 
@@ -85,6 +85,7 @@ func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 		return result
 	}
 	result.Stderr = execResult.Stderr
+	result.Env = execResult.Env
 	log.Debug("healthcheck executed", "exit_code", execResult.ExitCode, "duration", execResult.Duration, "stderr", execResult.Stderr)
 
 	// Stage 3: Parse output.

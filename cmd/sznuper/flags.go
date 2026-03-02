@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/sznuper/sznuper/internal/config"
 	"github.com/spf13/cobra"
+	"github.com/sznuper/sznuper/internal/config"
 )
 
 // registerOptionFlags adds a persistent --flag for every field in config.Options,
