@@ -192,8 +192,8 @@ alerts:
     trigger:
       interval: 30s
     args:
-      threshold_warn: 0.80
-      threshold_crit: 0.95
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
       mount: /
     cooldown:
       warning: 10m
@@ -225,10 +225,10 @@ User args (from config `args`, prefixed with `HEALTHCHECK_ARG_`):
 
 | Config | Environment variable |
 |---|---|
-| `threshold_warn: 0.80` | `HEALTHCHECK_ARG_THRESHOLD_WARN=0.80` |
+| `threshold_warn_percent: 80` | `HEALTHCHECK_ARG_THRESHOLD_WARN=80` |
 | `mount: /` | `HEALTHCHECK_ARG_MOUNT=/` |
 
-Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn` → `HEALTHCHECK_ARG_THRESHOLD_WARN`).
+Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn_percent` → `HEALTHCHECK_ARG_THRESHOLD_WARN`).
 
 **Stdin:**
 
@@ -288,13 +288,13 @@ Each healthcheck (official or community) should document its arguments, outputs,
 disk_usage
 
 Arguments (config → env):
-  threshold_warn  → HEALTHCHECK_ARG_THRESHOLD_WARN  - percentage as float for warning
-  threshold_crit  → HEALTHCHECK_ARG_THRESHOLD_CRIT  - percentage as float for critical
+  threshold_warn_percent  → HEALTHCHECK_ARG_THRESHOLD_WARN  - warning threshold (0-100)
+  threshold_crit_percent  → HEALTHCHECK_ARG_THRESHOLD_CRIT  - critical threshold (0-100)
   mount           → HEALTHCHECK_ARG_MOUNT           - mount point to check
 
 Outputs:
   status    - "ok", "warning", or "critical"
-  usage           - percentage as integer
+  usage           - percentage as float (0-100)
   available       - remaining space
 
 Status logic:
@@ -328,7 +328,7 @@ healthchecks/
 ### Example: interval healthcheck invocation
 
 ```
-HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN=0.80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
+HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
 ### Example: watch healthcheck invocation

@@ -58,8 +58,8 @@ alerts:
     trigger:
       interval: 30s
     args:
-      threshold_warn: 0.80
-      threshold_crit: 0.95
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
       mount: /
     cooldown:
       warning: 10m

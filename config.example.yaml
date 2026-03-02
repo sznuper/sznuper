@@ -18,8 +18,8 @@ alerts:
     timeout: 10s
     cooldown: 5m
     args:
-      threshold_warn: 0.80
-      threshold_crit: 0.90
+      threshold_warn_percent: 80
+      threshold_crit_percent: 90
     template: |-
       [{{healthcheck.status | upper}}] {{globals.hostname}} {{healthcheck.used}}:
       Disk at {{healthcheck.usage_percent}}%
