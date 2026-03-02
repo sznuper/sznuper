@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -36,7 +38,12 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 		defer cancel()
 	}
 
-	cmd := exec.CommandContext(ctx, opts.Path)
+	var cmd *exec.Cmd
+	if ape, _ := isAPEBinary(opts.Path); ape {
+		cmd = exec.CommandContext(ctx, "/bin/sh", opts.Path)
+	} else {
+		cmd = exec.CommandContext(ctx, opts.Path)
+	}
 	cmd.Env = buildEnv(opts)
 
 	if len(opts.Stdin) > 0 {
@@ -69,6 +76,21 @@ func Exec(ctx context.Context, opts ExecOpts) (*ExecResult, error) {
 	}
 
 	return result, nil
+}
+
+// isAPEBinary reports whether the file at path is an APE (Actually Portable
+// Executable) binary by checking for the MZ magic bytes.
+func isAPEBinary(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	var magic [2]byte
+	if _, err := io.ReadFull(f, magic[:]); err != nil {
+		return false, err
+	}
+	return magic[0] == 'M' && magic[1] == 'Z', nil
 }
 
 func buildEnv(opts ExecOpts) []string {
