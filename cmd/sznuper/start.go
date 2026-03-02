@@ -1,19 +1,62 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/runner"
+	"github.com/sznuper/sznuper/internal/scheduler"
 )
 
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the sznuper daemon",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("TODO: start")
+	Long:  "Starts the sznuper daemon, running each alert on its configured interval. Use --dry-run to skip sending notifications.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		logger := setupLogger()
+
+		cfg, err := config.Resolve(cfgFile)
+		if err != nil {
+			return err
+		}
+		applyOptionFlags(cmd, cfg)
+
+		r := runner.New(cfg, logger)
+
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+
+		sched := scheduler.New(r, logger, func(res runner.Result) {
+			logResult(logger, res)
+		})
+
+		logger.Info("sznuper daemon starting", "alerts", len(cfg.Alerts))
+		sched.Start(ctx, cfg.Alerts, dryRun)
+		logger.Info("sznuper daemon stopped")
+		return nil
 	},
 }
 
 func init() {
+	startCmd.Flags().Bool("dry-run", false, "simulate without sending notifications")
 	rootCmd.AddCommand(startCmd)
+}
+
+func logResult(logger *slog.Logger, res runner.Result) {
+	attrs := []any{
+		"alert", res.AlertName,
+		"status", res.Status,
+		"duration", res.Duration,
+	}
+	if res.Err != nil {
+		logger.Error("alert failed", append(attrs, "stage", res.ErrStage, "error", res.Err)...)
+	} else {
+		logger.Info("alert completed", attrs...)
+	}
 }

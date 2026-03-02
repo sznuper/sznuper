@@ -29,22 +29,23 @@ var runCmd = &cobra.Command{
 		r := runner.New(cfg, logger)
 		ctx := context.Background()
 
-		var results []runner.Result
+		hasError := false
 		if len(args) == 1 {
 			alert := r.FindAlert(args[0])
 			if alert == nil {
 				return fmt.Errorf("alert %q not found in config", args[0])
 			}
-			results = append(results, r.RunAlert(ctx, alert, dryRun))
-		} else {
-			results = r.RunAll(ctx, dryRun)
-		}
-
-		hasError := false
-		for _, res := range results {
+			res := <-r.RunAlert(ctx, alert, dryRun)
 			printResult(res)
 			if res.Err != nil {
 				hasError = true
+			}
+		} else {
+			for res := range r.RunAll(ctx, dryRun) {
+				printResult(res)
+				if res.Err != nil {
+					hasError = true
+				}
 			}
 		}
 

@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/sznuper/sznuper/internal/config"
@@ -31,17 +32,36 @@ func (r *Runner) FindAlert(name string) *config.Alert {
 	return nil
 }
 
-// RunAll runs every configured alert sequentially.
-func (r *Runner) RunAll(ctx context.Context, dryRun bool) []Result {
-	var results []Result
+// RunAll fires every alert concurrently and returns a channel that yields results
+// as they complete. The channel is closed once all alerts have finished.
+func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
+	out := make(chan Result, len(r.cfg.Alerts))
+	var wg sync.WaitGroup
 	for i := range r.cfg.Alerts {
-		results = append(results, r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun))
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun)
+		}(i)
 	}
-	return results
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }
 
-// RunAlert executes a single alert through the full pipeline.
-func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool) Result {
+// RunAlert executes a single alert through the full pipeline asynchronously.
+// It returns a channel that will receive exactly one Result when the pipeline completes.
+func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool) <-chan Result {
+	ch := make(chan Result, 1)
+	go func() {
+		ch <- r.runAlert(ctx, alert, dryRun)
+	}()
+	return ch
+}
+
+func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool) Result {
 	log := r.logger.With("alert", alert.Name)
 	start := time.Now()
 

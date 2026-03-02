@@ -41,7 +41,7 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	r := New(cfg, logger)
 
-	result := r.RunAlert(context.Background(), &cfg.Alerts[0], true)
+	result := <-r.RunAlert(context.Background(), &cfg.Alerts[0], true)
 	if result.Err != nil {
 		t.Fatalf("unexpected error at stage %q: %v", result.ErrStage, result.Err)
 	}
@@ -74,7 +74,7 @@ func TestRunAlert_ResolveFails(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	r := New(cfg, logger)
 
-	result := r.RunAlert(context.Background(), &cfg.Alerts[0], false)
+	result := <-r.RunAlert(context.Background(), &cfg.Alerts[0], false)
 	if result.Err == nil {
 		t.Fatal("expected error")
 	}
@@ -98,7 +98,7 @@ func TestRunAlert_ParseFails(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	r := New(cfg, logger)
 
-	result := r.RunAlert(context.Background(), &cfg.Alerts[0], false)
+	result := <-r.RunAlert(context.Background(), &cfg.Alerts[0], false)
 	if result.Err == nil {
 		t.Fatal("expected error")
 	}
@@ -145,7 +145,10 @@ func TestRunAll(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	r := New(cfg, logger)
 
-	results := r.RunAll(context.Background(), true)
+	var results []Result
+	for res := range r.RunAll(context.Background(), true) {
+		results = append(results, res)
+	}
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
