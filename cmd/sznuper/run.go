@@ -58,6 +58,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	runCmd.Flags().Bool("dry-run", false, "simulate the alert without sending notifications")
+	registerConfigFlags(runCmd)
 	rootCmd.AddCommand(runCmd)
 }
 

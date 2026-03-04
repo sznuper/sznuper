@@ -8,14 +8,16 @@ import (
 	"github.com/sznuper/sznuper/internal/config"
 )
 
-// registerOptionFlags adds a persistent --flag for every field in config.Options,
-// deriving the flag name from the yaml struct tag (snake_case → kebab-case).
-func registerOptionFlags(cmd *cobra.Command) {
+// registerConfigFlags registers --config, --verbose, and all options override
+// flags on cmd. Call this in init() for commands that load a config file.
+func registerConfigFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&cfgFile, "config", "", "config file path")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "enable debug logging")
 	t := reflect.TypeOf(config.Options{})
 	for i := range t.NumField() {
 		yamlTag := t.Field(i).Tag.Get("yaml")
 		flagName := strings.ReplaceAll(yamlTag, "_", "-")
-		cmd.PersistentFlags().String(flagName, "", "override "+yamlTag)
+		cmd.Flags().String(flagName, "", "override "+yamlTag)
 	}
 }
 
