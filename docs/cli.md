@@ -69,9 +69,7 @@ $ sznuper run disk_check --dry-run
 
 This allows sznuper to be used as a standalone one-shot tool (e.g. from cron) without running the daemon.
 
-## `sznuper hash <file>` [TODO]
-
-> **[TODO]** Not yet implemented.
+## `sznuper hash <file>`
 
 Prints the sha256 hash of a file. Convenience for users adding pinned healthchecks to their config.
 

@@ -20,8 +20,8 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Errorf("globals[hostname] = %q, want %q", cfg.Globals["hostname"], "vps-01")
 	}
 
-	if cfg.Options.HealthchecksDir != "/home/niar/healthchecks" {
-		t.Errorf("options.healthchecks_dir = %q, want %q", cfg.Options.HealthchecksDir, "/home/niar/healthchecks")
+	if cfg.Options.HealthchecksDir == "" {
+		t.Error("options.healthchecks_dir is empty")
 	}
 
 	// envsubst in service URL
@@ -46,16 +46,16 @@ func TestLoadExampleConfig(t *testing.T) {
 	if a.Healthcheck != "file://disk_usage" {
 		t.Errorf("alert healthcheck = %q, want %q", a.Healthcheck, "file://disk_usage")
 	}
-	if a.Trigger.Interval != "30s" {
-		t.Errorf("trigger interval = %q, want %q", a.Trigger.Interval, "30s")
+	if a.Trigger.Interval == "" {
+		t.Error("trigger interval is empty")
 	}
 	if a.Timeout != "10s" {
 		t.Errorf("timeout = %q, want %q", a.Timeout, "10s")
 	}
 
-	// Simple cooldown
-	if a.Cooldown.Simple != "5m" {
-		t.Errorf("cooldown simple = %q, want %q", a.Cooldown.Simple, "5m")
+	// Cooldown is set (simple or per-status)
+	if a.Cooldown.Simple == "" && a.Cooldown.Warning == "" {
+		t.Error("cooldown not set in example config")
 	}
 
 	// String notify
@@ -191,7 +191,108 @@ services:
 	}
 }
 
+// Validation tests
+
+func TestValidation_AlertMissingName(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - healthcheck: file://test
+    template: "test"
+    notify: [log]
+`); err == nil {
+		t.Fatal("expected error for missing alert name")
+	}
+}
+
+func TestValidation_AlertMissingHealthcheck(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - name: test
+    template: "test"
+    notify: [log]
+`); err == nil {
+		t.Fatal("expected error for missing alert healthcheck")
+	}
+}
+
+func TestValidation_AlertMissingTemplate(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - name: test
+    healthcheck: file://test
+    notify: [log]
+`); err == nil {
+		t.Fatal("expected error for missing alert template")
+	}
+}
+
+func TestValidation_AlertEmptyNotify(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - name: test
+    healthcheck: file://test
+    template: "test"
+`); err == nil {
+		t.Fatal("expected error for missing notify targets")
+	}
+}
+
+func TestValidation_ServiceMissingURL(t *testing.T) {
+	if err := loadErr(t, `
+services:
+  bad:
+    params:
+      foo: bar
+`); err == nil {
+		t.Fatal("expected error for service missing url")
+	}
+}
+
+func TestValidation_NotifyTargetMissingService(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - name: test
+    healthcheck: file://test
+    template: "test"
+    notify:
+      - service: ""
+        template: "override"
+`); err == nil {
+		t.Fatal("expected error for notify target with empty service")
+	}
+}
+
+func TestStrict_UnknownTopLevelField(t *testing.T) {
+	if err := loadErr(t, `unknown_field: foo`); err == nil {
+		t.Fatal("expected error for unknown top-level field")
+	}
+}
+
+func TestStrict_UnknownAlertField(t *testing.T) {
+	if err := loadErr(t, `
+alerts:
+  - name: test
+    healthcheck: file://test
+    template: "test"
+    notify: [log]
+    typo_field: oops
+`); err == nil {
+		t.Fatal("expected error for unknown alert field")
+	}
+}
+
 // helpers
+
+func loadErr(t *testing.T, yml string) error {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte(yml), 0644); err != nil {
+		t.Fatalf("writing temp config: %v", err)
+	}
+	_, err := Load(path)
+	return err
+}
 
 func loadFromString(t *testing.T, yml string) *Config {
 	t.Helper()

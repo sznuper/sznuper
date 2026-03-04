@@ -1,18 +1,20 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
 	"github.com/a8m/envsubst"
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
 )
 
 type Config struct {
 	Options  Options            `yaml:"options"`
 	Globals  map[string]any     `yaml:"globals"`
-	Services map[string]Service `yaml:"services"`
-	Alerts   []Alert            `yaml:"alerts"`
+	Services map[string]Service `yaml:"services" validate:"dive"`
+	Alerts   []Alert            `yaml:"alerts"   validate:"dive"`
 }
 
 type Options struct {
@@ -22,20 +24,20 @@ type Options struct {
 }
 
 type Service struct {
-	URL    string            `yaml:"url"`
+	URL    string            `yaml:"url"    validate:"required"`
 	Params map[string]string `yaml:"params"`
 }
 
 type Alert struct {
-	Name        string         `yaml:"name"`
-	Healthcheck string         `yaml:"healthcheck"`
+	Name        string         `yaml:"name"        validate:"required"`
+	Healthcheck string         `yaml:"healthcheck" validate:"required"`
 	SHA256      SHA256         `yaml:"sha256"`
 	Trigger     Trigger        `yaml:"trigger"`
 	Timeout     string         `yaml:"timeout"`
 	Args        map[string]any `yaml:"args"`
 	Cooldown    Cooldown       `yaml:"cooldown"`
-	Template    string         `yaml:"template"`
-	Notify      []NotifyTarget `yaml:"notify"`
+	Template    string         `yaml:"template"    validate:"required"`
+	Notify      []NotifyTarget `yaml:"notify"      validate:"required,dive"`
 }
 
 type Trigger struct {
@@ -101,7 +103,7 @@ type cooldownObj struct {
 
 // NotifyTarget handles a plain service name string or an object with overrides.
 type NotifyTarget struct {
-	Service  string            `yaml:"service"`
+	Service  string            `yaml:"service"  validate:"required"`
 	Template string            `yaml:"template"`
 	Params   map[string]string `yaml:"params"`
 }
@@ -133,9 +135,12 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("expanding env vars: %w", err)
 	}
 
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config: %w", err)
+	dec := yaml.NewDecoder(bytes.NewReader(data), yaml.Validator(validate), yaml.Strict())
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("config: %w", err)
 	}
 
 	return &cfg, nil
