@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	"github.com/sznuper/sznuper/internal/config"
 	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/runner"
@@ -40,12 +41,6 @@ func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun boo
 }
 
 func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRun bool) {
-	interval, err := time.ParseDuration(alert.Trigger.Interval)
-	if err != nil || interval <= 0 {
-		s.logger.Warn("skipping: no valid interval trigger", "alert", alert.Name)
-		return
-	}
-
 	cd := buildCooldownState(alert.Cooldown)
 
 	fire := func() {
@@ -55,18 +50,43 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 		}
 	}
 
-	fire() // immediate first run
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
+	switch {
+	case alert.Trigger.Interval != "":
+		interval, err := time.ParseDuration(alert.Trigger.Interval)
+		if err != nil || interval <= 0 {
+			s.logger.Warn("skipping: invalid interval", "alert", alert.Name, "interval", alert.Trigger.Interval)
 			return
-		case <-ticker.C:
-			fire()
 		}
+		fire() // immediate first run
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				fire()
+			}
+		}
+	case alert.Trigger.Cron != "":
+		s.runCronLoop(ctx, alert.Name, alert.Trigger.Cron, fire)
+	default:
+		s.logger.Warn("skipping: no trigger configured", "alert", alert.Name)
 	}
+}
+
+// cronParser accepts both 5-field (minute-level) and 6-field (with seconds) expressions.
+var cronParser = cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+
+func (s *Scheduler) runCronLoop(ctx context.Context, alertName, expr string, fire func()) {
+	cr := cron.New(cron.WithParser(cronParser))
+	if _, err := cr.AddFunc(expr, fire); err != nil {
+		s.logger.Warn("skipping: invalid cron expression", "alert", alertName, "cron", expr, "error", err)
+		return
+	}
+	cr.Start()
+	<-ctx.Done()
+	cr.Stop()
 }
 
 func buildCooldownState(cd config.Cooldown) *cooldown.State {

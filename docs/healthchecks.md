@@ -280,7 +280,7 @@ The daemon treats all healthchecks identically. The distinction between bundled 
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
-| Daemon (`sznuper`)     | Go                    | Shoutrrr, Sprig, envsubst; fsnotify + robfig/cron planned [TODO] |
+| Daemon (`sznuper`)     | Go                    | Shoutrrr, Sprig, envsubst; fsnotify planned [TODO]; robfig/cron integrated |
 | Official healthchecks   | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
 | User/community healthchecks | Anything          | User's choice and responsibility               |
 

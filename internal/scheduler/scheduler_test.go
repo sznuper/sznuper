@@ -62,7 +62,83 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 	}
 }
 
-func TestScheduler_NoInterval_NeverFires(t *testing.T) {
+func TestScheduler_CronFires(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{},
+		Alerts: []config.Alert{
+			{
+				Name:        "cron-tick",
+				Healthcheck: "file://check.sh",
+				Trigger:     config.Trigger{Cron: "* * * * * *"}, // every second (6-field)
+			},
+		},
+	}
+
+	var count atomic.Int32
+	sched := New(newRunner(t, cfg), slog.Default(), func(runner.Result) {
+		count.Add(1)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	defer cancel()
+
+	sched.Start(ctx, cfg.Alerts, false)
+
+	if got := count.Load(); got < 2 {
+		t.Errorf("onResult called %d times, want >= 2", got)
+	}
+}
+
+func TestScheduler_CronFivefield_Fires(t *testing.T) {
+	// 5-field expression "* * * * *" fires every minute — too slow for a test.
+	// Validate that a 5-field expression is accepted without error and fires
+	// by using a parser-level check: schedule the next run and confirm it's <= 1 min away.
+	schedule, err := cronParser.Parse("* * * * *")
+	if err != nil {
+		t.Fatalf("parsing 5-field cron: %v", err)
+	}
+	next := schedule.Next(time.Now())
+	if d := time.Until(next); d > time.Minute {
+		t.Errorf("next run in %v, want <= 1m", d)
+	}
+}
+
+func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{},
+		Alerts: []config.Alert{
+			{
+				Name:        "bad-cron",
+				Healthcheck: "file://check.sh",
+				Trigger:     config.Trigger{Cron: "not a cron expression"},
+			},
+		},
+	}
+
+	var count atomic.Int32
+	sched := New(newRunner(t, cfg), slog.Default(), func(runner.Result) {
+		count.Add(1)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	sched.Start(ctx, cfg.Alerts, false)
+
+	if got := count.Load(); got != 0 {
+		t.Errorf("onResult called %d times, want 0", got)
+	}
+}
+
+func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 	dir := t.TempDir()
 	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
 

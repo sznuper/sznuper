@@ -15,9 +15,7 @@ trigger:
 
 First run is immediate on daemon start, then repeats on the configured interval.
 
-### Cron [TODO]
-
-> **[TODO]** Not yet implemented. Cron triggers are parsed from config but silently skipped by the scheduler.
+### Cron
 
 Runs the healthcheck on a cron schedule. Uses [robfig/cron](https://github.com/robfig/cron) internally — no system cron involved. Supports standard 5-field and extended 6-field (with seconds) expressions.
 
