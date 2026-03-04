@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/healthcheck"
 	"github.com/sznuper/sznuper/internal/notify"
 )
@@ -41,7 +42,7 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun)
+			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil)
 		}(i)
 	}
 	go func() {
@@ -53,15 +54,16 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 
 // RunAlert executes a single alert through the full pipeline asynchronously.
 // It returns a channel that will receive exactly one Result when the pipeline completes.
-func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool) <-chan Result {
+// Pass a non-nil cd to enforce cooldown; nil preserves the original behaviour (ok skips notify).
+func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) <-chan Result {
 	ch := make(chan Result, 1)
 	go func() {
-		ch <- r.runAlert(ctx, alert, dryRun)
+		ch <- r.runAlert(ctx, alert, dryRun, cd)
 	}()
 	return ch
 }
 
-func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool) Result {
+func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) Result {
 	log := r.logger.With("alert", alert.Name)
 	start := time.Now()
 
@@ -151,11 +153,23 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool)
 	log.Debug("templates rendered", "targets", len(targets))
 
 	// Stage 5: Send notifications (or validate dry-run).
-	// Skip notification when status is "ok" — only "warning" and "critical" notify.
-	if parsed.Status == "ok" {
-		result.Duration = time.Since(start)
-		log.Info("status ok, skipping notifications")
-		return result
+	if cd != nil {
+		shouldNotify, isRecovery := cd.Check(parsed.Status)
+		result.Suppressed = !shouldNotify
+		result.IsRecovery = isRecovery
+		if !shouldNotify {
+			result.Duration = time.Since(start)
+			log.Info("notification suppressed by cooldown", "status", parsed.Status)
+			return result
+		}
+		// isRecovery=true: fall through to send even when status is "ok"
+	} else {
+		// Original behaviour: ok never notifies.
+		if parsed.Status == "ok" {
+			result.Duration = time.Since(start)
+			log.Info("status ok, skipping notifications")
+			return result
+		}
 	}
 
 	for _, t := range targets {

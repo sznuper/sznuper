@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sznuper/sznuper/internal/config"
+	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
@@ -45,8 +46,10 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 		return
 	}
 
+	cd := buildCooldownState(alert.Cooldown)
+
 	fire := func() {
-		result := <-s.runner.RunAlert(ctx, alert, dryRun)
+		result := <-s.runner.RunAlert(ctx, alert, dryRun, cd)
 		if s.onResult != nil {
 			s.onResult(result)
 		}
@@ -64,4 +67,28 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 			fire()
 		}
 	}
+}
+
+func buildCooldownState(cd config.Cooldown) *cooldown.State {
+	w := parseCooldownValue(effectiveCooldownValue(cd.Warning, cd.Simple))
+	c := parseCooldownValue(effectiveCooldownValue(cd.Critical, cd.Simple))
+	if w == 0 && c == 0 {
+		return nil
+	}
+	return cooldown.New(w, c, cd.Recovery, nil)
+}
+
+func effectiveCooldownValue(specific, simple string) string {
+	if specific != "" {
+		return specific
+	}
+	return simple
+}
+
+func parseCooldownValue(s string) time.Duration {
+	if s == "inf" {
+		return cooldown.Infinite
+	}
+	d, _ := time.ParseDuration(s)
+	return d
 }

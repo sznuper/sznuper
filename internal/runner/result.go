@@ -16,6 +16,8 @@ type Result struct {
 	Notified        []string          // services notified (or would-notify)
 	Env             []string
 	DryRun          bool
+	Suppressed      bool // notification suppressed by cooldown
+	IsRecovery      bool // ok-after-alert recovery notification
 	Duration        time.Duration
 	Err             error
 	ErrStage        string // "resolve", "exec", "parse", "template", "notify"

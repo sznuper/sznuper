@@ -54,9 +54,14 @@ func logResult(logger *slog.Logger, res runner.Result) {
 		"status", res.Status,
 		"duration", res.Duration,
 	}
-	if res.Err != nil {
+	switch {
+	case res.Err != nil:
 		logger.Error("alert failed", append(attrs, "stage", res.ErrStage, "error", res.Err)...)
-	} else {
+	case res.Suppressed:
+		logger.Info("notification suppressed by cooldown", attrs...)
+	case res.IsRecovery:
+		logger.Info("recovery notification sent", attrs...)
+	default:
 		logger.Info("alert completed", attrs...)
 	}
 }
