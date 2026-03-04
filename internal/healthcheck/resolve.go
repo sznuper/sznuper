@@ -21,6 +21,7 @@ type ResolveOpts struct {
 	HealthchecksDir string
 	CacheDir        string
 	SHA256          config.SHA256
+	ForceVerify     bool // skip cache hit; always re-download and verify
 }
 
 // Resolve resolves a healthcheck URI to an executable path.
@@ -34,7 +35,7 @@ func Resolve(uri string, opts ResolveOpts) (*ResolvedHealthcheck, error) {
 	case strings.HasPrefix(uri, "file://"):
 		return resolveFile(uri, opts.HealthchecksDir)
 	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):
-		return resolveHTTPS(uri, opts.SHA256, opts.CacheDir)
+		return resolveHTTPS(uri, opts.SHA256, opts.CacheDir, opts.ForceVerify)
 	default:
 		return nil, fmt.Errorf("unsupported healthcheck URI scheme: %s", uri)
 	}

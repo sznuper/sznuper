@@ -13,7 +13,7 @@ import (
 	"github.com/sznuper/sznuper/internal/config"
 )
 
-func resolveHTTPS(uri string, sha config.SHA256, cacheDir string) (*ResolvedHealthcheck, error) {
+func resolveHTTPS(uri string, sha config.SHA256, cacheDir string, forceVerify bool) (*ResolvedHealthcheck, error) {
 	if sha.Hash == "" && !sha.Disabled {
 		return nil, fmt.Errorf("https:// healthcheck requires sha256 field; use a hash or set sha256: false")
 	}
@@ -23,8 +23,10 @@ func resolveHTTPS(uri string, sha config.SHA256, cacheDir string) (*ResolvedHeal
 			return nil, fmt.Errorf("cache_dir must be set to use pinned https:// healthchecks")
 		}
 		cached := filepath.Join(cacheDir, sha.Hash)
-		if _, err := os.Stat(cached); err == nil {
-			return &ResolvedHealthcheck{URI: uri, Path: cached, Scheme: "https"}, nil
+		if !forceVerify {
+			if _, err := os.Stat(cached); err == nil {
+				return &ResolvedHealthcheck{URI: uri, Path: cached, Scheme: "https"}, nil
+			}
 		}
 		if err := downloadVerifyCache(uri, sha.Hash, cached); err != nil {
 			return nil, err
