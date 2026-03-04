@@ -42,7 +42,7 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil)
+			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil, nil)
 		}(i)
 	}
 	go func() {
@@ -55,15 +55,16 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 // RunAlert executes a single alert through the full pipeline asynchronously.
 // It returns a channel that will receive exactly one Result when the pipeline completes.
 // Pass a non-nil cd to enforce cooldown; nil preserves the original behaviour (ok skips notify).
-func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) <-chan Result {
+// Pass non-nil stdin to pipe bytes to the healthcheck process via stdin.
+func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) <-chan Result {
 	ch := make(chan Result, 1)
 	go func() {
-		ch <- r.runAlert(ctx, alert, dryRun, cd)
+		ch <- r.runAlert(ctx, alert, dryRun, cd, stdin)
 	}()
 	return ch
 }
 
-func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) Result {
+func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) Result {
 	log := r.logger.With("alert", alert.Name)
 	start := time.Now()
 
@@ -99,6 +100,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 		Timeout:     timeout,
 		TriggerType: detectTriggerType(alert.Trigger),
 		Args:        alert.Args,
+		Stdin:       stdin,
 	})
 	if err != nil {
 		result.Err = err

@@ -44,7 +44,7 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 	cd := buildCooldownState(alert.Cooldown)
 
 	fire := func() {
-		result := <-s.runner.RunAlert(ctx, alert, dryRun, cd)
+		result := <-s.runner.RunAlert(ctx, alert, dryRun, cd, nil)
 		if s.onResult != nil {
 			s.onResult(result)
 		}
@@ -70,6 +70,8 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 		}
 	case alert.Trigger.Cron != "":
 		s.runCronLoop(ctx, alert.Name, alert.Trigger.Cron, fire)
+	case alert.Trigger.Watch != "":
+		s.runWatchLoop(ctx, alert, dryRun, cd)
 	default:
 		s.logger.Warn("skipping: no trigger configured", "alert", alert.Name)
 	}

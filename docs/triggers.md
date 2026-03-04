@@ -39,9 +39,7 @@ trigger:
 
 `interval` is better for frequent healthchecks ("every 30 seconds"). `cron` is better for scheduled healthchecks ("every day at 3am").
 
-### File Watch [TODO]
-
-> **[TODO]** Not yet implemented. Watch triggers are parsed from config but silently skipped by the scheduler.
+### File Watch
 
 Watches a file for changes using inotify. When new lines are appended, they are piped to the healthcheck via stdin.
 
