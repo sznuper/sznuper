@@ -6,7 +6,7 @@
 
 Runs a local executable directly.
 
-- `file://disk_usage` — relative to `dirs.healthchecks`
+- `file://disk_usage` — relative to `options.healthchecks_dir`
 - `file:///usr/local/bin/my_check.py` — absolute path
 
 Behavior:
@@ -15,7 +15,9 @@ Behavior:
 - Fails loud if missing.
 - `sha256` is **optional**, defaults to `false`. If set to a hash string, the daemon validates the file's hash before every run and refuses to execute on mismatch.
 
-### `https://`
+### `https://` [TODO]
+
+> **[TODO]** Not yet implemented. `https://` healthchecks return an error at runtime.
 
 Fetches a remote script, caches it locally, and runs the cached version.
 
@@ -61,7 +63,7 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{File exists at\ndirs.healthchecks/disk_usage ?}
+    A[Alert triggered] --> B{File exists at\noptions.healthchecks_dir/disk_usage ?}
     B -->|No| C[❌ Alert errors out\nLog: file not found]
     B -->|Yes| D{File is executable?}
     D -->|No| E[❌ Alert errors out\nLog: not executable]
@@ -84,7 +86,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{File exists at\ndirs.healthchecks/disk_usage ?}
+    A[Alert triggered] --> B{File exists at\noptions.healthchecks_dir/disk_usage ?}
     B -->|No| C[❌ Alert errors out\nLog: file not found]
     B -->|Yes| D{File is executable?}
     D -->|No| E[❌ Alert errors out\nLog: not executable]
@@ -110,7 +112,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Alert triggered] --> B{File exists in cache as\ndirs.cache/a1b2c3d4e5f6... ?}
+    A[Alert triggered] --> B{File exists in cache as\noptions.cache_dir/a1b2c3d4e5f6... ?}
     B -->|Yes| F[Run cached healthcheck with\nenv vars + stdin]
     B -->|No| C[Attempt HTTPS download]
     C --> D{Download successful?}
@@ -118,7 +120,7 @@ flowchart TD
     D -->|Yes| G[Compute sha256 of\ndownloaded content]
     G --> H{Hash matches config?}
     H -->|No| I[❌ Alert errors out\nLog: hash mismatch\nremote content may have changed]
-    H -->|Yes| J[Save to dirs.cache/a1b2c3d4e5f6...\nMark as executable]
+    H -->|Yes| J[Save to options.cache_dir/a1b2c3d4e5f6...\nMark as executable]
     J --> F
     F --> K{status\nin output?}
     K -->|Missing| L[⚠️ Log error\nHealthcheck is broken]
@@ -170,12 +172,14 @@ flowchart TD
     B --> C[Unpinned healthchecks will be\nre-fetched on next start]
 ```
 
-### Bundled Scripts and `sznuper init`
+### Bundled Scripts and `sznuper init` [TODO]
+
+> **[TODO]** `sznuper init` is not yet implemented. The bundled healthcheck distribution described below is the planned behaviour.
 
 Official healthcheck scripts are written in C and compiled with Cosmopolitan Libc into single portable binaries. On `sznuper init`:
 
-1. Official healthchecks are downloaded from the official repository and placed into `dirs.healthchecks` as local files.
-2. Cached versions are also placed in `dirs.cache` with their sha256 filenames.
+1. Official healthchecks are downloaded from the official repository and placed into `options.healthchecks_dir` as local files.
+2. Cached versions are also placed in `options.cache_dir` with their sha256 filenames.
 3. Default config is generated referencing the official repo HTTPS URLs with matching sha256 values.
 
 Result: works offline immediately after init. The config references canonical HTTPS URLs but the cache is pre-populated. Since official healthchecks are Cosmopolitan portable binaries, the same URL and sha256 work on any architecture — configs are fully portable across machines.
@@ -218,17 +222,17 @@ Daemon metadata (set by the daemon):
 | Variable | Description | Set for |
 |---|---|---|
 | `HEALTHCHECK_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
-| `HEALTHCHECK_FILE` | Watched file path | watch only |
-| `HEALTHCHECK_LINE_COUNT` | Number of new lines | watch only |
+| `HEALTHCHECK_FILE` | Watched file path | watch only [TODO] |
+| `HEALTHCHECK_LINE_COUNT` | Number of new lines | watch only [TODO] |
 
 User args (from config `args`, prefixed with `HEALTHCHECK_ARG_`):
 
 | Config | Environment variable |
 |---|---|
-| `threshold_warn_percent: 80` | `HEALTHCHECK_ARG_THRESHOLD_WARN=80` |
+| `threshold_warn_percent: 80` | `HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80` |
 | `mount: /` | `HEALTHCHECK_ARG_MOUNT=/` |
 
-Arg keys are lowercase in config and templates. Allowed characters: `[a-zA-Z_]`, case-insensitive. The daemon uppercases keys when mapping to environment variables (e.g., `threshold_warn_percent` → `HEALTHCHECK_ARG_THRESHOLD_WARN`).
+Arg keys are uppercased as-is when mapped to environment variables (e.g., `threshold_warn_percent` → `HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT`, `mount` → `HEALTHCHECK_ARG_MOUNT`).
 
 **Stdin:**
 
@@ -276,7 +280,7 @@ The daemon treats all healthchecks identically. The distinction between bundled 
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
-| Daemon (`sznuper`)     | Go                    | Shoutrrr, fsnotify, robfig/cron, Sprig        |
+| Daemon (`sznuper`)     | Go                    | Shoutrrr, Sprig, envsubst; fsnotify + robfig/cron planned [TODO] |
 | Official healthchecks   | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
 | User/community healthchecks | Anything          | User's choice and responsibility               |
 
@@ -288,9 +292,9 @@ Each healthcheck (official or community) should document its arguments, outputs,
 disk_usage
 
 Arguments (config → env):
-  threshold_warn_percent  → HEALTHCHECK_ARG_THRESHOLD_WARN  - warning threshold (0-100)
-  threshold_crit_percent  → HEALTHCHECK_ARG_THRESHOLD_CRIT  - critical threshold (0-100)
-  mount           → HEALTHCHECK_ARG_MOUNT           - mount point to check
+  threshold_warn_percent  → HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT  - warning threshold (0-100)
+  threshold_crit_percent  → HEALTHCHECK_ARG_THRESHOLD_CRIT_PERCENT  - critical threshold (0-100)
+  mount                   → HEALTHCHECK_ARG_MOUNT                   - mount point to check
 
 Outputs:
   status    - "ok", "warning", or "critical"
@@ -328,10 +332,12 @@ healthchecks/
 ### Example: interval healthcheck invocation
 
 ```
-HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
+HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
-### Example: watch healthcheck invocation
+### Example: watch healthcheck invocation [TODO]
+
+> **[TODO]** File watch trigger not yet implemented. Environment variables `HEALTHCHECK_FILE` and `HEALTHCHECK_LINE_COUNT` are not yet set by the daemon.
 
 ```
 HEALTHCHECK_TRIGGER=watch HEALTHCHECK_FILE=/var/log/auth.log HEALTHCHECK_LINE_COUNT=3 HEALTHCHECK_ARG_WATCH=all HEALTHCHECK_ARG_EXCLUDE_USERS=deploy /etc/sznuper/healthchecks/ssh_login <<< "line1\nline2\nline3"

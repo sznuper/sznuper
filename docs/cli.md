@@ -1,6 +1,8 @@
 # sznuper — CLI Commands
 
-## `sznuper init`
+## `sznuper init` [TODO]
+
+> **[TODO]** Not yet implemented.
 
 Generates default config if it doesn't exist, then runs `sznuper validate`.
 
@@ -10,14 +12,15 @@ Generates default config if it doesn't exist, then runs `sznuper validate`.
 
 ## `sznuper start`
 
-Runs `sznuper validate` first, then starts the daemon in the foreground. Reads config, starts all alert intervals and file watchers, runs until interrupted.
+Starts the daemon in the foreground. Reads config, starts one goroutine per alert on its configured interval, runs until interrupted.
 
 **Signal handling:**
 - **SIGINT** (Ctrl+C) — graceful shutdown. Finishes any currently running healthchecks, then exits.
 - **SIGTERM** (systemd stop) — graceful shutdown. Same behavior as SIGINT.
-- **SIGHUP** — triggers `validate` logic: re-reads config, re-fetches unpinned `https://` healthchecks. If validation fails, the reload is rejected and the daemon continues with the previous config.
 
-## `sznuper validate`
+## `sznuper validate` [TODO]
+
+> **[TODO]** Not yet implemented.
 
 Validates and syncs the current config:
 
@@ -27,8 +30,6 @@ Validates and syncs the current config:
 - Verifies all `sha256` hashes match.
 - Fetches/re-fetches all `https://` healthchecks (pinned: only if not cached; unpinned: always).
 - Reports errors and exits non-zero if anything fails.
-
-Used automatically by `sznuper init` and `sznuper start`. Can be run standalone for CI/deploy pipelines.
 
 ## `sznuper run <alert_name>`
 
@@ -68,7 +69,9 @@ $ sznuper run disk_check --dry-run
 
 This allows sznuper to be used as a standalone one-shot tool (e.g. from cron) without running the daemon.
 
-## `sznuper hash <file>`
+## `sznuper hash <file>` [TODO]
+
+> **[TODO]** Not yet implemented.
 
 Prints the sha256 hash of a file. Convenience for users adding pinned healthchecks to their config.
 

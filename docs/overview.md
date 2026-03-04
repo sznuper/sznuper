@@ -17,4 +17,4 @@ It runs a set of healthchecks — some bundled (CPU, memory, disk, SSH logins, s
 | **Notification**| A message sent to a service when an alert triggers.                                                                                                       |
 | **Service**     | A configured notification destination. Defined by a Shoutrrr URL with options. Examples: Telegram, Slack, webhook, logger.                                |
 
-**Flow:** A healthcheck runs → outputs `status` (ok/warning/critical) + key-value data → if not `ok`, the alert triggers → a notification is rendered from the template → sent to services with merged options.
+**Flow:** A healthcheck runs → outputs `status` (ok/warning/critical) + key-value data → if not `ok` (or recovery enabled), the alert triggers → a notification is rendered from the template → sent to services with merged params.

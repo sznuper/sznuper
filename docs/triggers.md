@@ -2,7 +2,7 @@
 
 ## Trigger Types
 
-Each alert must have exactly one trigger. Config validation rejects alerts with multiple triggers or no trigger.
+Each alert must have exactly one trigger.
 
 ### Interval
 
@@ -13,7 +13,11 @@ trigger:
   interval: 30s
 ```
 
-### Cron
+First run is immediate on daemon start, then repeats on the configured interval.
+
+### Cron [TODO]
+
+> **[TODO]** Not yet implemented. Cron triggers are parsed from config but silently skipped by the scheduler.
 
 Runs the healthcheck on a cron schedule. Uses [robfig/cron](https://github.com/robfig/cron) internally — no system cron involved. Supports standard 5-field and extended 6-field (with seconds) expressions.
 
@@ -37,7 +41,9 @@ trigger:
 
 `interval` is better for frequent healthchecks ("every 30 seconds"). `cron` is better for scheduled healthchecks ("every day at 3am").
 
-### File Watch
+### File Watch [TODO]
+
+> **[TODO]** Not yet implemented. Watch triggers are parsed from config but silently skipped by the scheduler.
 
 Watches a file for changes using inotify. When new lines are appended, they are piped to the healthcheck via stdin.
 
@@ -71,7 +77,9 @@ An optional `timeout` field can be set per alert. If a healthcheck exceeds the t
 
 If not set, no timeout — the healthcheck runs as long as it wants.
 
-### Concurrent Execution
+### Concurrent Execution [TODO]
+
+> **[TODO]** Concurrency control (killing previous processes, buffering watch lines) is not yet implemented. Currently each alert goroutine runs the healthcheck synchronously and waits for it to finish before scheduling the next tick.
 
 Concurrency is tracked **per alert name**, not per healthcheck script. Two alerts using the same healthcheck with different args are independent.
 

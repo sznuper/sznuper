@@ -2,7 +2,7 @@
 
 ## Config Loading & Validation
 
-**Choice:** `goccy/go-yaml` + `go-playground/validator`
+**Choice:** `goccy/go-yaml` + `go-playground/validator` (validator not yet wired up — [TODO])
 **Rejected:** `spf13/viper`, `kaptinlin/gozod`
 
 ### Why not Viper?
@@ -37,7 +37,9 @@ Practical problems:
 - **Doesn't satisfy goccy/go-yaml's `StructValidator` interface** — would lose line-number error reporting.
 - **Fluent API solves a different problem** — great for runtime schema building, but Sznuper's config is a fixed struct where tags are the right tool.
 
-### Usage Pattern
+### Usage Pattern [TODO]
+
+> **[TODO]** `go-playground/validator` is not yet integrated. Currently `config.Load` uses plain `yaml.Unmarshal` with no struct validation or strict-field checking. The pattern below is the intended implementation.
 
 ```go
 validate := validator.New(validator.WithRequiredStructEnabled())

@@ -70,12 +70,12 @@ alerts:
       - ops-slack
       - service: telegram
         template: "*{{healthcheck.status | upper}}* `{{globals.hostname}}`: Disk {{args.mount}} at {{healthcheck.usage}}%"
-        options:
+        params:
           parsemode: MarkdownV2
           notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
       - service: email
         template: "Disk {{args.mount}} is at {{healthcheck.usage}}%\n\nHost: {{globals.hostname}}\nAvailable: {{healthcheck.available}}"
-        options:
+        params:
           subject: "[{{healthcheck.status | upper}}] {{globals.hostname}}: {{alert.name}}"
 ```
 
@@ -120,8 +120,8 @@ Service options map directly to Shoutrrr query params for each service type. Opt
 **Resolution order (later overrides earlier):**
 
 ```
-service.options              ← base Shoutrrr params
-alert.notify[].options       ← override for this specific alert
+service.params              ← base Shoutrrr params
+alert.notify[].params       ← override for this specific alert
 ```
 
 **Simple notify (service defaults):**
@@ -136,7 +136,7 @@ notify: [telegram, logfile]
 notify:
   - logfile
   - service: telegram
-    options:
+    params:
       notification: true     # override telegram's default for this alert
 ```
 

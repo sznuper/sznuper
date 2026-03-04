@@ -21,7 +21,7 @@ The daemon looks for config in this order:
     memory_usage                          # bundled, Cosmopolitan portable binary
     ssh_login                             # bundled, Cosmopolitan portable binary
     systemd_unit                          # bundled, Cosmopolitan portable binary
-/var/cache/sznuper/                       # https:// cached scripts
+/var/cache/sznuper/                       # https:// cached scripts [TODO]
     a1b2c3d4e5f6...                       # named by sha256
     f6e5d4c3b2a1...
 /var/log/sznuper/
@@ -35,31 +35,32 @@ The daemon looks for config in this order:
 ~/.config/sznuper/
   config.yaml
   healthchecks/
-~/.cache/sznuper/                         # https:// cached scripts
+~/.cache/sznuper/                         # https:// cached scripts [TODO]
 ~/.local/state/sznuper/logs/              # daemon log
 ```
 
-`sznuper init` places files according to whether it's running as root or not.
+`sznuper init` places files according to whether it's running as root or not. **[TODO]**
 
 ---
 
 ## Config Structure
 
 ```yaml
-# Directories — have sensible defaults, user can override
-dirs:
-  healthchecks: /etc/sznuper/healthchecks  # file:// resolves relative to this
-  cache: /var/cache/sznuper            # https:// cached scripts
-  logs: /var/log/sznuper               # daemon logs
+# Options — have sensible defaults, user can override
+options:
+  healthchecks_dir: /etc/sznuper/healthchecks  # file:// resolves relative to this
+  cache_dir: /var/cache/sznuper                # https:// cached scripts [TODO]
+  logs_dir: /var/log/sznuper                   # daemon logs
 
-# Global options
-hostname: vps-01                       # optional, defaults to system hostname
+# Globals — free-form key-value pairs available in all templates as {{globals.*}}
+globals:
+  hostname: vps-01                       # optional, defaults to system hostname
 
-# Notification services (Shoutrrr URLs with aliases)
+# Notification services (Shoutrrr URLs with params)
 services:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
-    options:
+    params:
       chats: ${TELEGRAM_CHAT_ID}
       notification: true
       parsemode: MarkdownV2
@@ -88,7 +89,7 @@ alerts:
     template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}% ({{healthcheck.available}} remaining)"
     notify: [telegram, logfile]
 
-  - name: ssl_expiry
+  - name: ssl_expiry                      # [TODO] https:// healthchecks not yet implemented
     healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
@@ -96,7 +97,7 @@ alerts:
     template: "{{healthcheck.status | upper}} {{globals.hostname}}: Certificate for {{healthcheck.domain}} expires in {{healthcheck.days_left}} days"
     notify: [telegram]
 
-  - name: experimental_check
+  - name: experimental_check             # [TODO] https:// healthchecks not yet implemented
     healthcheck: https://example.com/beta_check.sh
     sha256: false                         # explicit opt-out, re-fetched on daemon start
     trigger:
@@ -107,7 +108,7 @@ alerts:
   - name: ssh_login
     healthcheck: file://ssh_login
     trigger:
-      watch: /var/log/auth.log
+      watch: /var/log/auth.log            # [TODO] file watch trigger not yet implemented
     timeout: 30s
     args:
       watch: all
@@ -127,6 +128,6 @@ alerts:
       - logfile
       - ops-slack
       - service: telegram
-        options:
+        params:
           notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
 ```
