@@ -15,9 +15,7 @@ Behavior:
 - Fails loud if missing.
 - `sha256` is **optional**, defaults to `false`. If set to a hash string, the daemon validates the file's hash before every run and refuses to execute on mismatch.
 
-### `https://` [TODO]
-
-> **[TODO]** Not yet implemented. `https://` healthchecks return an error at runtime.
+### `https://`
 
 Fetches a remote script, caches it locally, and runs the cached version.
 

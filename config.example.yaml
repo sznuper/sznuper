@@ -1,5 +1,6 @@
 options:
-  healthchecks_dir: /home/niar/healthchecks
+  healthchecks_dir: /home/niar/repos/sznuper/monorepo/healthchecks/build
+  cache_dir: /home/niar/.cache/sznuper
 
 globals:
   hostname: vps-01
@@ -11,17 +12,19 @@ services:
       chats: ${TELEGRAM_CHAT_ID}
 
 alerts:
-  - name: disk_check
-    healthcheck: file://disk_usage
+  - name: disk_check_https
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.1.0/disk_usage
+    sha256: 336d1a978140eb8d63d4f9699b5b7484a6f474f2eb8df2e19da3ba925de6ae4e
     trigger:
-      interval: 30s
+      interval: 2s
     timeout: 10s
-    cooldown: 5m
+    cooldown: 8s
     args:
-      threshold_warn_percent: 80
+      threshold_warn_percent: 2
       threshold_crit_percent: 90
     template: |-
       [{{healthcheck.status | upper}}] {{globals.hostname}} {{healthcheck.used}}:
       Disk at {{healthcheck.usage_percent}}%
     notify:
       - telegram
+

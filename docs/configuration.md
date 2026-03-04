@@ -21,7 +21,7 @@ The daemon looks for config in this order:
     memory_usage                          # bundled, Cosmopolitan portable binary
     ssh_login                             # bundled, Cosmopolitan portable binary
     systemd_unit                          # bundled, Cosmopolitan portable binary
-/var/cache/sznuper/                       # https:// cached scripts [TODO]
+/var/cache/sznuper/                       # https:// cached scripts
     a1b2c3d4e5f6...                       # named by sha256
     f6e5d4c3b2a1...
 /var/log/sznuper/
@@ -35,7 +35,7 @@ The daemon looks for config in this order:
 ~/.config/sznuper/
   config.yaml
   healthchecks/
-~/.cache/sznuper/                         # https:// cached scripts [TODO]
+~/.cache/sznuper/                         # https:// cached scripts
 ~/.local/state/sznuper/logs/              # daemon log
 ```
 
@@ -49,7 +49,7 @@ The daemon looks for config in this order:
 # Options — have sensible defaults, user can override
 options:
   healthchecks_dir: /etc/sznuper/healthchecks  # file:// resolves relative to this
-  cache_dir: /var/cache/sznuper                # https:// cached scripts [TODO]
+  cache_dir: /var/cache/sznuper                # https:// cached scripts
   logs_dir: /var/log/sznuper                   # daemon logs
 
 # Globals — free-form key-value pairs available in all templates as {{globals.*}}
@@ -89,7 +89,7 @@ alerts:
     template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}% ({{healthcheck.available}} remaining)"
     notify: [telegram, logfile]
 
-  - name: ssl_expiry                      # [TODO] https:// healthchecks not yet implemented
+  - name: ssl_expiry
     healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
@@ -97,7 +97,7 @@ alerts:
     template: "{{healthcheck.status | upper}} {{globals.hostname}}: Certificate for {{healthcheck.domain}} expires in {{healthcheck.days_left}} days"
     notify: [telegram]
 
-  - name: experimental_check             # [TODO] https:// healthchecks not yet implemented
+  - name: experimental_check
     healthcheck: https://example.com/beta_check.sh
     sha256: false                         # explicit opt-out, re-fetched on daemon start
     trigger:

@@ -75,7 +75,11 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 
 	// Stage 1: Resolve healthcheck URI.
 	log.Info("resolving healthcheck", "uri", alert.Healthcheck)
-	resolved, err := healthcheck.Resolve(alert.Healthcheck, r.cfg.Options.HealthchecksDir)
+	resolved, err := healthcheck.Resolve(alert.Healthcheck, healthcheck.ResolveOpts{
+		HealthchecksDir: r.cfg.Options.HealthchecksDir,
+		CacheDir:        r.cfg.Options.CacheDir,
+		SHA256:          alert.SHA256,
+	})
 	if err != nil {
 		result.Err = err
 		result.ErrStage = "resolve"
