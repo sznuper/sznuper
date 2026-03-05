@@ -219,7 +219,7 @@ Daemon metadata (set by the daemon):
 
 | Variable | Description | Set for |
 |---|---|---|
-| `HEALTHCHECK_TRIGGER` | `"interval"`, `"cron"`, or `"watch"` | always |
+| `HEALTHCHECK_TRIGGER` | `"interval"`, `"cron"`, `"watch"`, or `"pipe"` | always |
 | `HEALTHCHECK_FILE` | Watched file path | watch only [TODO] |
 | `HEALTHCHECK_LINE_COUNT` | Number of new lines | watch only [TODO] |
 
@@ -234,8 +234,9 @@ Arg keys are uppercased as-is when mapped to environment variables (e.g., `thres
 
 **Stdin:**
 
-- For watch triggers: new lines from the watched file, one per line.
-- For interval/cron triggers: empty.
+- For `watch` triggers: new bytes appended to the watched file since the last invocation.
+- For `pipe` triggers: bytes accumulated from the pipe command's stdout since the last invocation.
+- For `interval`/`cron` triggers: empty.
 
 ### Output
 
@@ -263,6 +264,75 @@ status=warning
 usage=84
 available=8G
 ```
+
+### Multi-Record Output
+
+A healthcheck can emit multiple independent records from a single invocation. Each record is processed as a separate notification — its own status check, cooldown evaluation, and template render. This is designed for triggers like `pipe` where a single batch may contain several distinct events (e.g., 4 SSH failures and 7 logins in one journalctl flush).
+
+#### Structural tokens
+
+Two tokens control the format. They are matched as exact trimmed lines:
+
+| Token | Meaning |
+|---|---|
+| `--- records` | Ends the global props section; starts the records array |
+| `--- record` | Starts the next record within the array |
+
+#### Format
+
+```
+event_count=11
+failure_count=4
+login_count=7
+--- records
+status=warning
+event=failure
+user=root
+host=14.18.190.138
+--- record
+status=ok
+event=login
+user=root
+host=83.22.197.254
+```
+
+#### Parsing rules
+
+| Output shape | Result |
+|---|---|
+| No tokens | Single-record output — fully backward compatible with all existing healthchecks |
+| `--- records` only (no `--- record`) | Exactly one record; everything before `--- records` is global props |
+| `--- records` + one or more `--- record` | Global props + N records |
+
+#### Global props
+
+Everything before `--- records` is the global section:
+
+- Not a notification — context only, no `status` key.
+- Merged into every record's template data. Record fields win on collision.
+- Useful for batch-level counts (`event_count`, `failure_count`) that should be accessible in per-record templates.
+
+#### Records
+
+Each block between `--- records` / `--- record` tokens is an independent record:
+
+- **Requires** a `status` key (`ok`, `warning`, `critical`).
+- Fires independently through the notify → cooldown pipeline.
+- `status=ok` records skip notification (unless cooldown recovery is enabled).
+
+#### Template access
+
+Global and per-record fields are merged before template rendering:
+
+```yaml
+template: |
+  SSH {{ healthcheck.event }}: {{ healthcheck.user }} from {{ healthcheck.host }}
+  (batch: {{ healthcheck.failure_count }} failures, {{ healthcheck.login_count }} logins)
+```
+
+Here `failure_count` and `login_count` come from global props; `event`, `user`, `host` come from the per-record block. Both are available as `{{ healthcheck.* }}`.
+
+---
 
 ### Healthcheck Types
 

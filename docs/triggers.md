@@ -105,15 +105,16 @@ An optional `timeout` field can be set per alert. If a healthcheck exceeds the t
 
 If not set, no timeout — the healthcheck runs as long as it wants.
 
-### Concurrent Execution [TODO]
-
-> **[TODO]** Concurrency control (killing previous processes, buffering watch lines) is not yet implemented. Currently each alert goroutine runs the healthcheck synchronously and waits for it to finish before scheduling the next tick.
+### Concurrent Execution
 
 Concurrency is tracked **per alert name**, not per healthcheck script. Two alerts using the same healthcheck with different args are independent.
 
 | Trigger | Behavior when previous healthcheck still running |
 |---|---|
-| `interval` / `cron` | Kill previous process, start new invocation |
-| `watch` | Buffer new lines, run after previous completes. If previous exceeds `timeout`, kill it and flush buffer into new invocation |
+| `interval` / `cron` | Blocks — waits for the current invocation to finish before scheduling the next tick. [TODO: kill previous and start new] |
+| `watch` | Buffers new bytes; runs next invocation after current completes with all accumulated data |
+| `pipe` | Buffers new stdout chunks; runs next invocation after current completes with all accumulated data |
 
-For watch triggers, there is no queue — just a single line buffer. New lines keep appending to the buffer while a healthcheck is running. When the current healthcheck finishes (or is killed by timeout), all buffered lines are flushed into the next invocation.
+For `watch` and `pipe` triggers, there is no queue — just a single byte buffer. New data keeps accumulating while a healthcheck is running. When the current invocation finishes, the entire buffer is flushed into the next invocation as a single stdin payload.
+
+For multi-record healthchecks (using `--- records` / `--- record` output), the buffer gate waits until all records from a batch are fully processed (channel closed) before firing the next invocation. Buffered data accumulated during that time is flushed as one batch.
