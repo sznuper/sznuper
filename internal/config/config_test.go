@@ -40,11 +40,11 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Fatalf("alerts count = %d, want 1", len(cfg.Alerts))
 	}
 	a := cfg.Alerts[0]
-	if a.Name != "disk_check" {
-		t.Errorf("alert name = %q, want %q", a.Name, "disk_check")
+	if a.Name != "disk_check_https" {
+		t.Errorf("alert name = %q, want %q", a.Name, "disk_check_https")
 	}
-	if a.Healthcheck != "file://disk_usage" {
-		t.Errorf("alert healthcheck = %q, want %q", a.Healthcheck, "file://disk_usage")
+	if a.Healthcheck != "https://github.com/sznuper/healthchecks/releases/download/v0.1.0/disk_usage" {
+		t.Errorf("alert healthcheck = %q, want %q", a.Healthcheck, "https://github.com/sznuper/healthchecks/releases/download/v0.1.0/disk_usage")
 	}
 	if a.Trigger.Interval == "" {
 		t.Error("trigger interval is empty")
