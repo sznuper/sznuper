@@ -80,13 +80,15 @@ func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, dryRun
 				fire()
 			}
 
-		case res := <-resultCh:
-			resultCh = nil
+		case res, ok := <-resultCh:
 			if s.onResult != nil {
 				s.onResult(res)
 			}
-			if len(buf) > 0 {
-				fire()
+			if !ok {
+				resultCh = nil
+				if len(buf) > 0 {
+					fire()
+				}
 			}
 		}
 	}

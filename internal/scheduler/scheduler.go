@@ -44,9 +44,10 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 	cd := buildCooldownState(alert.Cooldown)
 
 	fire := func() {
-		result := <-s.runner.RunAlert(ctx, alert, dryRun, cd, nil)
-		if s.onResult != nil {
-			s.onResult(result)
+		for result := range s.runner.RunAlert(ctx, alert, dryRun, cd, nil) {
+			if s.onResult != nil {
+				s.onResult(result)
+			}
 		}
 	}
 

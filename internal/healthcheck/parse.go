@@ -14,6 +14,16 @@ type ParsedOutput struct {
 	Lines  []string
 }
 
+// MultiOutput holds the result of ParseMulti.
+// GlobalFields/GlobalArrays are shared context emitted before "--- records".
+// Records holds one ParsedOutput per "--- record" block.
+// For single-record output (no separators), Global is empty and Records has one entry.
+type MultiOutput struct {
+	GlobalFields map[string]string
+	GlobalArrays map[string]any
+	Records      []*ParsedOutput
+}
+
 // Parse parses KEY=VALUE lines from healthcheck stdout.
 // Lines without '=' are ignored. The "status" key is required.
 // Values of the form [...] are parsed as typed arrays and stored in Arrays.
@@ -22,8 +32,105 @@ func Parse(stdout string) (*ParsedOutput, error) {
 		Fields: make(map[string]string),
 		Arrays: make(map[string]any),
 	}
+	out.Lines = parseKeyValues(stdout, out.Fields, out.Arrays)
 
-	for _, line := range strings.Split(stdout, "\n") {
+	status, ok := out.Fields["status"]
+	if !ok {
+		return nil, fmt.Errorf("healthcheck output missing required 'status' key")
+	}
+	out.Status = status
+
+	return out, nil
+}
+
+// ParseMulti parses healthcheck stdout supporting the multi-record format.
+//
+// Structural tokens (exact line match after trimming):
+//
+//	"--- records" — ends the global props section, starts the records array
+//	"--- record"  — starts the next record within the array
+//
+// Rules:
+//   - No separators: single-record output. Equivalent to Parse; Records has one entry.
+//   - "--- records" present: everything before it is global props; everything after
+//     is records split by "--- record".
+func ParseMulti(stdout string) (*MultiOutput, error) {
+	const tokRecords = "--- records"
+	const tokRecord = "--- record"
+
+	lines := strings.Split(stdout, "\n")
+
+	hasRecords := false
+	for _, l := range lines {
+		if strings.TrimSpace(l) == tokRecords {
+			hasRecords = true
+			break
+		}
+	}
+
+	if !hasRecords {
+		parsed, err := Parse(stdout)
+		if err != nil {
+			return nil, err
+		}
+		return &MultiOutput{
+			GlobalFields: make(map[string]string),
+			GlobalArrays: make(map[string]any),
+			Records:      []*ParsedOutput{parsed},
+		}, nil
+	}
+
+	out := &MultiOutput{
+		GlobalFields: make(map[string]string),
+		GlobalArrays: make(map[string]any),
+	}
+
+	var globalLines []string
+	var recordBlocks [][]string
+	var cur []string
+	inRecords := false
+
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		switch {
+		case trimmed == tokRecords:
+			inRecords = true
+			cur = nil
+		case trimmed == tokRecord:
+			if inRecords {
+				recordBlocks = append(recordBlocks, cur)
+				cur = nil
+			}
+		default:
+			if inRecords {
+				cur = append(cur, l)
+			} else {
+				globalLines = append(globalLines, l)
+			}
+		}
+	}
+	if inRecords {
+		recordBlocks = append(recordBlocks, cur)
+	}
+
+	parseKeyValues(strings.Join(globalLines, "\n"), out.GlobalFields, out.GlobalArrays)
+
+	for i, block := range recordBlocks {
+		parsed, err := Parse(strings.Join(block, "\n"))
+		if err != nil {
+			return nil, fmt.Errorf("record %d: %w", i, err)
+		}
+		out.Records = append(out.Records, parsed)
+	}
+
+	return out, nil
+}
+
+// parseKeyValues parses KEY=VALUE lines into fields and arrays.
+// Returns the ordered Lines slice of "key=value" strings.
+func parseKeyValues(text string, fields map[string]string, arrays map[string]any) []string {
+	var lines []string
+	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -40,22 +147,15 @@ func Parse(stdout string) (*ParsedOutput, error) {
 			continue
 		}
 
-		out.Lines = append(out.Lines, key+"="+value)
+		lines = append(lines, key+"="+value)
 
 		if len(value) >= 2 && value[0] == '[' && value[len(value)-1] == ']' {
-			out.Arrays[key] = parseArrayValue(value)
+			arrays[key] = parseArrayValue(value)
 		} else {
-			out.Fields[key] = value
+			fields[key] = value
 		}
 	}
-
-	status, ok := out.Fields["status"]
-	if !ok {
-		return nil, fmt.Errorf("healthcheck output missing required 'status' key")
-	}
-	out.Status = status
-
-	return out, nil
+	return lines
 }
 
 func parseArrayValue(raw string) any {

@@ -103,13 +103,15 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 			}
 			s.logger.Warn("watch: fsnotify error", "alert", alert.Name, "error", err)
 
-		case res := <-resultCh:
-			resultCh = nil
+		case res, ok := <-resultCh:
 			if s.onResult != nil {
 				s.onResult(res)
 			}
-			if len(buf) > 0 {
-				fire()
+			if !ok {
+				resultCh = nil
+				if len(buf) > 0 {
+					fire()
+				}
 			}
 		}
 	}

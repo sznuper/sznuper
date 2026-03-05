@@ -166,7 +166,104 @@ func TestParse_SingleElementArray(t *testing.T) {
 	}
 }
 
-func TestParse_ArrayInLines(t *testing.T) {
+func TestParseMulti_SingleRecord(t *testing.T) {
+	stdout := "status=warning\nusage=84\n"
+	out, err := ParseMulti(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(out.Records) != 1 {
+		t.Fatalf("records = %d, want 1", len(out.Records))
+	}
+	if out.Records[0].Status != "warning" {
+		t.Errorf("status = %q, want %q", out.Records[0].Status, "warning")
+	}
+	if len(out.GlobalFields) != 0 {
+		t.Errorf("GlobalFields should be empty for single-record output")
+	}
+}
+
+func TestParseMulti_MultiRecord(t *testing.T) {
+	stdout := "event_count=2\nfailure_count=1\nlogin_count=1\n--- records\nstatus=warning\nevent=failure\nuser=root\nhost=1.2.3.4\n--- record\nstatus=ok\nevent=login\nuser=bob\nhost=5.6.7.8\n"
+	out, err := ParseMulti(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(out.Records) != 2 {
+		t.Fatalf("records = %d, want 2", len(out.Records))
+	}
+	if out.GlobalFields["event_count"] != "2" {
+		t.Errorf("GlobalFields[event_count] = %q, want %q", out.GlobalFields["event_count"], "2")
+	}
+	if out.Records[0].Status != "warning" {
+		t.Errorf("record[0] status = %q, want %q", out.Records[0].Status, "warning")
+	}
+	if out.Records[0].Fields["user"] != "root" {
+		t.Errorf("record[0] user = %q, want %q", out.Records[0].Fields["user"], "root")
+	}
+	if out.Records[1].Status != "ok" {
+		t.Errorf("record[1] status = %q, want %q", out.Records[1].Status, "ok")
+	}
+	if out.Records[1].Fields["host"] != "5.6.7.8" {
+		t.Errorf("record[1] host = %q, want %q", out.Records[1].Fields["host"], "5.6.7.8")
+	}
+}
+
+func TestParseMulti_EmptyRecords(t *testing.T) {
+	// "--- records" with nothing after it → 1 empty block, parse fails on missing status
+	// But with just global props and no events, the C code won't emit "--- records" at all.
+	// Test: no "--- records" and no fields → error on missing status from Parse.
+	stdout := "status=ok\nevent_count=0\n"
+	out, err := ParseMulti(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(out.Records) != 1 {
+		t.Fatalf("records = %d, want 1", len(out.Records))
+	}
+	if out.Records[0].Status != "ok" {
+		t.Errorf("status = %q, want %q", out.Records[0].Status, "ok")
+	}
+}
+
+func TestParseMulti_GlobalFieldsNotInRecords(t *testing.T) {
+	stdout := "batch=42\n--- records\nstatus=warning\nevent=failure\n"
+	out, err := ParseMulti(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.GlobalFields["batch"] != "42" {
+		t.Errorf("GlobalFields[batch] = %q, want %q", out.GlobalFields["batch"], "42")
+	}
+	if _, ok := out.Records[0].Fields["batch"]; ok {
+		t.Error("record should not contain global field 'batch'")
+	}
+}
+
+func TestParseMulti_RecordMissingStatus(t *testing.T) {
+	stdout := "global=1\n--- records\nevent=failure\nuser=root\n"
+	_, err := ParseMulti(stdout)
+	if err == nil {
+		t.Fatal("expected error for record missing status")
+	}
+}
+
+func TestParseMulti_OneRecordNoSeparator(t *testing.T) {
+	// "--- records" with single block (no "--- record") → exactly one record
+	stdout := "ctx=1\n--- records\nstatus=ok\nfoo=bar\n"
+	out, err := ParseMulti(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(out.Records) != 1 {
+		t.Fatalf("records = %d, want 1", len(out.Records))
+	}
+	if out.Records[0].Fields["foo"] != "bar" {
+		t.Errorf("foo = %q, want %q", out.Records[0].Fields["foo"], "bar")
+	}
+}
+
+func TestParseMulti_ArrayInLines(t *testing.T) {
 	stdout := "status=ok\nhosts=[\"a\", \"b\"]\n"
 	out, err := Parse(stdout)
 	if err != nil {

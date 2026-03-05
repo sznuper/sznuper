@@ -35,10 +35,11 @@ var runCmd = &cobra.Command{
 			if alert == nil {
 				return fmt.Errorf("alert %q not found in config", args[0])
 			}
-			res := <-r.RunAlert(ctx, alert, dryRun, nil, nil)
-			printResult(res)
-			if res.Err != nil {
-				hasError = true
+			for res := range r.RunAlert(ctx, alert, dryRun, nil, nil) {
+				printResult(res)
+				if res.Err != nil {
+					hasError = true
+				}
 			}
 		} else {
 			for res := range r.RunAll(ctx, dryRun) {

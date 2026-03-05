@@ -42,7 +42,9 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			out <- <-r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil, nil)
+			for res := range r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil, nil) {
+				out <- res
+			}
 		}(i)
 	}
 	go func() {
@@ -53,25 +55,33 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 }
 
 // RunAlert executes a single alert through the full pipeline asynchronously.
-// It returns a channel that will receive exactly one Result when the pipeline completes.
+// It returns a channel that yields one Result per healthcheck record, then closes.
+// Single-record healthchecks yield exactly one result (same as before).
+// Multi-record healthchecks (using "--- records" / "--- record" separators) yield one result per record.
 // Pass a non-nil cd to enforce cooldown; nil preserves the original behaviour (ok skips notify).
 // Pass non-nil stdin to pipe bytes to the healthcheck process via stdin.
 func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) <-chan Result {
-	ch := make(chan Result, 1)
+	ch := make(chan Result, 8)
 	go func() {
-		ch <- r.runAlert(ctx, alert, dryRun, cd, stdin)
+		defer close(ch)
+		r.runAlert(ctx, alert, dryRun, cd, stdin, ch)
 	}()
 	return ch
 }
 
-func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) Result {
+func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte, out chan<- Result) {
 	log := r.logger.With("alert", alert.Name)
 	start := time.Now()
 
-	result := Result{
+	base := Result{
 		AlertName:      alert.Name,
 		HealthcheckURI: alert.Healthcheck,
 		DryRun:         dryRun,
+	}
+
+	sendErr := func(r Result) {
+		r.Duration = time.Since(start)
+		out <- r
 	}
 
 	// Stage 1: Resolve healthcheck URI.
@@ -82,13 +92,13 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 		SHA256:          alert.SHA256,
 	})
 	if err != nil {
-		result.Err = err
-		result.ErrStage = "resolve"
-		result.Duration = time.Since(start)
+		base.Err = err
+		base.ErrStage = "resolve"
 		log.Error("resolve failed", "error", err)
-		return result
+		sendErr(base)
+		return
 	}
-	result.HealthcheckPath = resolved.Path
+	base.HealthcheckPath = resolved.Path
 	log.Debug("healthcheck resolved", "path", resolved.Path, "scheme", resolved.Scheme)
 
 	// Stage 2: Execute healthcheck.
@@ -103,112 +113,141 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 		Stdin:       stdin,
 	})
 	if err != nil {
-		result.Err = err
-		result.ErrStage = "exec"
-		result.Duration = time.Since(start)
+		base.Err = err
+		base.ErrStage = "exec"
 		if execResult != nil {
-			result.Stderr = execResult.Stderr
+			base.Stderr = execResult.Stderr
 		}
 		log.Error("exec failed", "error", err)
-		return result
+		sendErr(base)
+		return
 	}
-	result.Stderr = execResult.Stderr
-	result.Env = execResult.Env
+	base.Stderr = execResult.Stderr
+	base.Env = execResult.Env
 	log.Debug("healthcheck executed", "exit_code", execResult.ExitCode, "duration", execResult.Duration, "stderr", execResult.Stderr)
 
-	// Stage 3: Parse output.
+	// Stage 3: Parse output (multi-record aware).
 	log.Info("parsing output")
-	parsed, err := healthcheck.Parse(execResult.Stdout)
+	multi, err := healthcheck.ParseMulti(execResult.Stdout)
 	if err != nil {
-		result.Err = err
-		result.ErrStage = "parse"
-		result.Duration = time.Since(start)
+		base.Err = err
+		base.ErrStage = "parse"
 		log.Error("parse failed", "error", err, "stdout", execResult.Stdout)
-		return result
+		sendErr(base)
+		return
 	}
-	result.Status = parsed.Status
-	result.Output = parsed.Lines
-	result.Fields = parsed.Fields
-	result.Arrays = parsed.Arrays
-	log.Debug("output parsed", "status", parsed.Status, "fields", parsed.Fields, "arrays", len(parsed.Arrays))
-
-	// Stage 4: Build template data and resolve targets.
-	log.Info("rendering templates")
-	tmplData := notify.BuildTemplateData(
-		r.cfg.Globals,
-		alert.Name,
-		parsed.Fields,
-		parsed.Arrays,
-		alert.Args,
-	)
+	log.Debug("output parsed", "records", len(multi.Records))
 
 	refs := mapNotifyRefs(alert.Notify)
 	svcs := mapServiceDefs(r.cfg.Services)
 
-	targets, err := notify.ResolveTargets(refs, svcs, alert.Template, tmplData)
-	if err != nil {
-		result.Err = err
-		result.ErrStage = "template"
-		result.Duration = time.Since(start)
-		log.Error("template failed", "error", err)
-		return result
-	}
+	// Stages 4-5: Per-record template + notify.
+	for _, record := range multi.Records {
+		result := base
+		result.Status = record.Status
+		result.Output = record.Lines
+		result.Fields = record.Fields
+		result.Arrays = record.Arrays
 
-	result.Rendered = make(map[string]string, len(targets))
-	for _, t := range targets {
-		result.Rendered[t.ServiceName] = t.Message
-	}
-	log.Debug("templates rendered", "targets", len(targets))
+		// Global fields are base; record fields override on collision.
+		mergedFields := mergeFields(multi.GlobalFields, record.Fields)
+		mergedArrays := mergeArrays(multi.GlobalArrays, record.Arrays)
 
-	// Stage 5: Send notifications (or validate dry-run).
-	if cd != nil {
-		shouldNotify, isRecovery := cd.Check(parsed.Status)
-		result.Suppressed = !shouldNotify
-		result.IsRecovery = isRecovery
-		if !shouldNotify {
-			result.Duration = time.Since(start)
-			log.Info("notification suppressed by cooldown", "status", parsed.Status)
-			return result
+		log.Info("rendering templates", "status", record.Status)
+		tmplData := notify.BuildTemplateData(
+			r.cfg.Globals,
+			alert.Name,
+			mergedFields,
+			mergedArrays,
+			alert.Args,
+		)
+
+		targets, err := notify.ResolveTargets(refs, svcs, alert.Template, tmplData)
+		if err != nil {
+			result.Err = err
+			result.ErrStage = "template"
+			log.Error("template failed", "error", err)
+			sendErr(result)
+			return
 		}
-		// isRecovery=true: fall through to send even when status is "ok"
-	} else {
-		// Original behaviour: ok never notifies.
-		if parsed.Status == "ok" {
-			result.Duration = time.Since(start)
-			log.Info("status ok, skipping notifications")
-			return result
-		}
-	}
 
-	for _, t := range targets {
-		if dryRun {
-			if err := notify.Validate(t); err != nil {
+		result.Rendered = make(map[string]string, len(targets))
+		for _, t := range targets {
+			result.Rendered[t.ServiceName] = t.Message
+		}
+		log.Debug("templates rendered", "targets", len(targets))
+
+		if cd != nil {
+			shouldNotify, isRecovery := cd.Check(record.Status)
+			result.Suppressed = !shouldNotify
+			result.IsRecovery = isRecovery
+			if !shouldNotify {
+				log.Info("notification suppressed by cooldown", "status", record.Status)
+				result.Duration = time.Since(start)
+				out <- result
+				continue
+			}
+		} else {
+			if record.Status == "ok" {
+				log.Info("status ok, skipping notifications")
+				result.Duration = time.Since(start)
+				out <- result
+				continue
+			}
+		}
+
+		for _, t := range targets {
+			if dryRun {
+				if err := notify.Validate(t); err != nil {
+					result.Err = err
+					result.ErrStage = "notify"
+					log.Error("notify validation failed (dry-run)", "service", t.ServiceName, "error", err)
+					sendErr(result)
+					return
+				}
+				result.Notified = append(result.Notified, t.ServiceName)
+				log.Debug("would notify (dry-run)", "service", t.ServiceName, "message", t.Message)
+				continue
+			}
+
+			log.Info("sending notification", "service", t.ServiceName)
+			if err := notify.Send(t); err != nil {
 				result.Err = err
 				result.ErrStage = "notify"
-				result.Duration = time.Since(start)
-				log.Error("notify validation failed (dry-run)", "service", t.ServiceName, "error", err)
-				return result
+				log.Error("notify failed", "service", t.ServiceName, "error", err)
+				sendErr(result)
+				return
 			}
 			result.Notified = append(result.Notified, t.ServiceName)
-			log.Debug("would notify (dry-run)", "service", t.ServiceName, "message", t.Message)
-			continue
+			log.Debug("notification sent", "service", t.ServiceName)
 		}
 
-		log.Info("sending notification", "service", t.ServiceName)
-		if err := notify.Send(t); err != nil {
-			result.Err = err
-			result.ErrStage = "notify"
-			result.Duration = time.Since(start)
-			log.Error("notify failed", "service", t.ServiceName, "error", err)
-			return result
-		}
-		result.Notified = append(result.Notified, t.ServiceName)
-		log.Debug("notification sent", "service", t.ServiceName)
+		result.Duration = time.Since(start)
+		log.Info("alert completed", "status", result.Status, "duration", result.Duration)
+		out <- result
 	}
+}
 
-	result.Duration = time.Since(start)
-	log.Info("alert completed", "status", result.Status, "duration", result.Duration)
-	return result
+func mergeFields(global, record map[string]string) map[string]string {
+	merged := make(map[string]string, len(global)+len(record))
+	for k, v := range global {
+		merged[k] = v
+	}
+	for k, v := range record {
+		merged[k] = v
+	}
+	return merged
+}
+
+func mergeArrays(global, record map[string]any) map[string]any {
+	merged := make(map[string]any, len(global)+len(record))
+	for k, v := range global {
+		merged[k] = v
+	}
+	for k, v := range record {
+		merged[k] = v
+	}
+	return merged
 }
 
 func detectTriggerType(t config.Trigger) string {
