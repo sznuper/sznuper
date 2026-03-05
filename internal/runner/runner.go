@@ -129,7 +129,8 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 	result.Status = parsed.Status
 	result.Output = parsed.Lines
 	result.Fields = parsed.Fields
-	log.Debug("output parsed", "status", parsed.Status, "fields", parsed.Fields)
+	result.Arrays = parsed.Arrays
+	log.Debug("output parsed", "status", parsed.Status, "fields", parsed.Fields, "arrays", len(parsed.Arrays))
 
 	// Stage 4: Build template data and resolve targets.
 	log.Info("rendering templates")
@@ -137,6 +138,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 		r.cfg.Globals,
 		alert.Name,
 		parsed.Fields,
+		parsed.Arrays,
 		alert.Args,
 	)
 

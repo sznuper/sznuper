@@ -13,6 +13,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
 		map[string]string{"status": "warning", "usage": "84"},
+		nil,
 		map[string]any{"mount": "/"},
 	)
 
@@ -39,7 +40,7 @@ func TestResolveTargets_TemplateOverride(t *testing.T) {
 		{ServiceName: "telegram", Template: `CUSTOM: {{healthcheck.status}}`},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil)
+		map[string]string{"status": "ok"}, nil, nil)
 
 	targets, err := ResolveTargets(refs, services, `DEFAULT: {{healthcheck.status}}`, data)
 	if err != nil {
@@ -64,7 +65,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 		},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil)
+		map[string]string{"status": "ok"}, nil, nil)
 
 	targets, err := ResolveTargets(refs, services, `test`, data)
 	if err != nil {
@@ -89,7 +90,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 		},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "alert",
-		map[string]string{"status": "critical"}, nil)
+		map[string]string{"status": "critical"}, nil, nil)
 
 	targets, err := ResolveTargets(refs, services, `body`, data)
 	if err != nil {
@@ -104,7 +105,7 @@ func TestResolveTargets_UnknownService(t *testing.T) {
 	services := map[string]ServiceDef{}
 	refs := []NotifyRef{{ServiceName: "nonexistent"}}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil)
+		map[string]string{"status": "ok"}, nil, nil)
 
 	_, err := ResolveTargets(refs, services, `test`, data)
 	if err == nil {
@@ -122,7 +123,7 @@ func TestResolveTargets_MultipleTargets(t *testing.T) {
 		{ServiceName: "slack"},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil)
+		map[string]string{"status": "ok"}, nil, nil)
 
 	targets, err := ResolveTargets(refs, services, `msg`, data)
 	if err != nil {
