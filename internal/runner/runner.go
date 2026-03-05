@@ -213,6 +213,8 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 
 func detectTriggerType(t config.Trigger) string {
 	switch {
+	case t.Pipe != "":
+		return "pipe"
 	case t.Watch != "":
 		return "watch"
 	case t.Cron != "":

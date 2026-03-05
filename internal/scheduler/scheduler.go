@@ -72,6 +72,8 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 		s.runCronLoop(ctx, alert.Name, alert.Trigger.Cron, fire)
 	case alert.Trigger.Watch != "":
 		s.runWatchLoop(ctx, alert, dryRun, cd)
+	case alert.Trigger.Pipe != "":
+		s.runPipeLoop(ctx, alert, dryRun, cd)
 	default:
 		s.logger.Warn("skipping: no trigger configured", "alert", alert.Name)
 	}

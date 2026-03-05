@@ -44,6 +44,7 @@ type Trigger struct {
 	Interval string `yaml:"interval"`
 	Cron     string `yaml:"cron"`
 	Watch    string `yaml:"watch"`
+	Pipe     string `yaml:"pipe"`
 }
 
 // SHA256 handles both string hashes and `false` (opt-out).
