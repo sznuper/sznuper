@@ -89,7 +89,7 @@ func isAPEBinary(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var magic [2]byte
 	if _, err := io.ReadFull(f, magic[:]); err != nil {
 		return false, err

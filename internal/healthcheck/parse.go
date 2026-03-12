@@ -92,11 +92,11 @@ func ParseMulti(stdout string) (*MultiOutput, error) {
 
 	for _, l := range lines {
 		trimmed := strings.TrimSpace(l)
-		switch {
-		case trimmed == tokRecords:
+		switch trimmed {
+		case tokRecords:
 			inRecords = true
 			cur = nil
-		case trimmed == tokRecord:
+		case tokRecord:
 			if inRecords {
 				recordBlocks = append(recordBlocks, cur)
 				cur = nil

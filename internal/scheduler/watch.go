@@ -22,7 +22,7 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 		s.logger.Warn("watch: failed to create watcher", "alert", alert.Name, "error", err)
 		return
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	// Watch parent dir for CREATE events (log rotation recovery).
 	if err := watcher.Add(dir); err != nil {
@@ -50,14 +50,14 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 		select {
 		case <-ctx.Done():
 			if f != nil {
-				f.Close()
+				_ = f.Close()
 			}
 			return
 
 		case event, ok := <-watcher.Events:
 			if !ok {
 				if f != nil {
-					f.Close()
+					_ = f.Close()
 				}
 				return
 			}
@@ -78,14 +78,14 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 			case event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove):
 				// Log rotation: close handle, wait for CREATE.
 				if f != nil {
-					f.Close()
+					_ = f.Close()
 					f = nil
 				}
 
 			case event.Has(fsnotify.Create) && filepath.Base(event.Name) == base:
 				// File re-created after rotation or fresh creation.
 				if f != nil {
-					f.Close()
+					_ = f.Close()
 				}
 				f, _ = os.Open(path)
 				offset = 0
@@ -97,7 +97,7 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				if f != nil {
-					f.Close()
+					_ = f.Close()
 				}
 				return
 			}
@@ -126,7 +126,7 @@ func openAndSeekEnd(path string) (*os.File, int64) {
 	}
 	offset, err := f.Seek(0, io.SeekEnd)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, 0
 	}
 	return f, offset

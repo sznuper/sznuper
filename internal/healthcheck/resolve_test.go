@@ -88,7 +88,7 @@ func TestResolve_HTTPSPinned_DownloadsAndCaches(t *testing.T) {
 	hash := sha256hex(content)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(content)
+		_, _ = w.Write(content)
 	}))
 	defer srv.Close()
 
@@ -123,7 +123,7 @@ func TestResolve_HTTPSPinned_DownloadsAndCaches(t *testing.T) {
 
 func TestResolve_HTTPSPinned_HashMismatch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("#!/bin/sh\necho status=ok\n"))
+		_, _ = w.Write([]byte("#!/bin/sh\necho status=ok\n"))
 	}))
 	defer srv.Close()
 
@@ -165,7 +165,7 @@ func TestResolve_HTTPSPinned_ServerDown_UsesCache(t *testing.T) {
 func TestResolve_HTTPSUnpinned(t *testing.T) {
 	content := []byte("#!/bin/sh\necho status=ok\n")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(content)
+		_, _ = w.Write(content)
 	}))
 	defer srv.Close()
 

@@ -15,13 +15,11 @@ import (
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
-func writeScript(t *testing.T, dir, content string) string {
+func writeScript(t *testing.T, dir string) {
 	t.Helper()
-	path := filepath.Join(dir, "check.sh")
-	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "check.sh"), []byte("#!/bin/sh\necho status=ok\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	return path
 }
 
 func newRunner(t *testing.T, cfg *config.Config) *runner.Runner {
@@ -32,7 +30,7 @@ func newRunner(t *testing.T, cfg *config.Config) *runner.Runner {
 
 func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir)
 
 	const interval = 50 * time.Millisecond
 	cfg := &config.Config{
@@ -65,7 +63,7 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 
 func TestScheduler_CronFires(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir)
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -110,7 +108,7 @@ func TestScheduler_CronFivefield_Fires(t *testing.T) {
 
 func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir)
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -141,7 +139,7 @@ func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 
 func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir)
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -172,7 +170,7 @@ func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 
 func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir)
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -272,7 +270,7 @@ func TestScheduler_Watch_FiresOnAppend(t *testing.T) {
 	if _, err := f.WriteString("hello world\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Wait for the result.
 	deadline := time.Now().Add(2 * time.Second)
@@ -359,7 +357,7 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 		if _, err := f.WriteString(s + "\n"); err != nil {
 			t.Fatal(err)
 		}
-		f.Close()
+		_ = f.Close()
 	}
 
 	appendLine("line1")
@@ -520,7 +518,7 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	if _, err := f.WriteString("fresh\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Wait for result.
 	deadline := time.Now().Add(2 * time.Second)
