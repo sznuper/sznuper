@@ -22,7 +22,7 @@ var rootCmd = &cobra.Command{
 func init() {}
 
 func setupLogger() *slog.Logger {
-	level := slog.LevelWarn
+	level := slog.LevelInfo
 	if verbose {
 		level = slog.LevelDebug
 	}
