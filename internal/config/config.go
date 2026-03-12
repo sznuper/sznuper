@@ -12,45 +12,55 @@ import (
 
 type Config struct {
 	Options  Options            `yaml:"options"`
-	Globals  map[string]any     `yaml:"globals"`
-	Services map[string]Service `yaml:"services" validate:"dive"`
-	Alerts   []Alert            `yaml:"alerts"   validate:"dive"`
+	Globals  map[string]any     `yaml:"globals,omitempty"`
+	Services map[string]Service `yaml:"services,omitempty" validate:"dive"`
+	Alerts   []Alert            `yaml:"alerts,omitempty"   validate:"dive"`
 }
 
 type Options struct {
-	HealthchecksDir string `yaml:"healthchecks_dir"`
-	CacheDir        string `yaml:"cache_dir"`
-	LogsDir         string `yaml:"logs_dir"`
+	HealthchecksDir string `yaml:"healthchecks_dir,omitempty"`
+	CacheDir        string `yaml:"cache_dir,omitempty"`
+	LogsDir         string `yaml:"logs_dir,omitempty"`
 }
 
 type Service struct {
 	URL    string            `yaml:"url"    validate:"required"`
-	Params map[string]string `yaml:"params"`
+	Params map[string]string `yaml:"params,omitempty"`
 }
 
 type Alert struct {
 	Name        string         `yaml:"name"        validate:"required"`
 	Healthcheck string         `yaml:"healthcheck" validate:"required"`
-	SHA256      SHA256         `yaml:"sha256"`
+	SHA256      SHA256         `yaml:"sha256,omitempty"`
 	Trigger     Trigger        `yaml:"trigger"`
-	Timeout     string         `yaml:"timeout"`
-	Args        map[string]any `yaml:"args"`
-	Cooldown    Cooldown       `yaml:"cooldown"`
+	Timeout     string         `yaml:"timeout,omitempty"`
+	Args        map[string]any `yaml:"args,omitempty"`
+	Cooldown    Cooldown       `yaml:"cooldown,omitempty"`
 	Template    string         `yaml:"template"    validate:"required"`
 	Notify      []NotifyTarget `yaml:"notify"      validate:"required,dive"`
 }
 
 type Trigger struct {
-	Interval string `yaml:"interval"`
-	Cron     string `yaml:"cron"`
-	Watch    string `yaml:"watch"`
-	Pipe     string `yaml:"pipe"`
+	Interval string `yaml:"interval,omitempty"`
+	Cron     string `yaml:"cron,omitempty"`
+	Watch    string `yaml:"watch,omitempty"`
+	Pipe     string `yaml:"pipe,omitempty"`
 }
 
 // SHA256 handles both string hashes and `false` (opt-out).
 type SHA256 struct {
 	Hash     string
 	Disabled bool
+}
+
+func (s SHA256) MarshalYAML() (any, error) {
+	if s.Disabled {
+		return false, nil
+	}
+	if s.Hash != "" {
+		return s.Hash, nil
+	}
+	return nil, nil
 }
 
 func (s *SHA256) UnmarshalYAML(unmarshal func(any) error) error {
@@ -77,6 +87,20 @@ type Cooldown struct {
 	Warning  string
 	Critical string
 	Recovery bool
+}
+
+func (c Cooldown) MarshalYAML() (any, error) {
+	if c.Simple != "" {
+		return c.Simple, nil
+	}
+	if c.Warning != "" || c.Critical != "" || c.Recovery {
+		return cooldownObj{
+			Warning:  c.Warning,
+			Critical: c.Critical,
+			Recovery: c.Recovery,
+		}, nil
+	}
+	return nil, nil
 }
 
 func (c *Cooldown) UnmarshalYAML(unmarshal func(any) error) error {
@@ -109,6 +133,14 @@ type NotifyTarget struct {
 	Params   map[string]string `yaml:"params"`
 }
 
+func (n NotifyTarget) MarshalYAML() (any, error) {
+	if n.Template == "" && len(n.Params) == 0 {
+		return n.Service, nil
+	}
+	type notifyAlias NotifyTarget
+	return notifyAlias(n), nil
+}
+
 func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
 	var str string
 	if err := unmarshal(&str); err == nil {
@@ -123,6 +155,17 @@ func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
 	}
 	*n = NotifyTarget(obj)
 	return nil
+}
+
+// LoadRaw decodes YAML without envsubst or validation.
+// Used by `init --from` to load base configs that contain ${...} references.
+func LoadRaw(data []byte) (*Config, error) {
+	var cfg Config
+	dec := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+	return &cfg, nil
 }
 
 func Load(path string) (*Config, error) {
