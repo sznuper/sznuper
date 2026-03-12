@@ -18,9 +18,9 @@ Starts the daemon in the foreground. Reads config, starts one goroutine per aler
 - **SIGINT** (Ctrl+C) — graceful shutdown. Finishes any currently running healthchecks, then exits.
 - **SIGTERM** (systemd stop) — graceful shutdown. Same behavior as SIGINT.
 
-## `sznuper validate` [TODO]
+## `sznuper validate`
 
-> **[TODO]** Not yet implemented.
+Loads the config, resolves every alert's healthcheck, and reports per-alert success or failure. For each alert it verifies file existence, sha256 hash (if configured), and fetches HTTPS healthchecks with `ForceVerify: true`. Exits non-zero if any alert fails.
 
 Validates and syncs the current config:
 

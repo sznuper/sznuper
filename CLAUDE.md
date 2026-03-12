@@ -1,6 +1,6 @@
 # Sznuper
 
-Single-binary monitoring daemon for Linux. Runs healthchecks, sends notifications via Shoutrrr. No database, no UI — just YAML config and a process.
+A lightweight server monitor that runs healthchecks and sends notifications — Discord, Slack, Telegram, Teams, and more.
 
 ## Design Philosophy
 
@@ -26,7 +26,7 @@ Specification lives in `docs/`:
 - `overview.md` — project pitch, glossary, flow
 - `configuration.md` — config file location, layout, full config structure
 - `healthchecks.md` — URI schemes (file://, https://), sha256 verification, healthcheck I/O interface, lifecycle flowcharts
-- `triggers.md` — interval, cron, file watch triggers, timeout, concurrency
+- `triggers.md` — interval, cron, file watch, pipe triggers, timeout, concurrency
 - `cooldown.md` — cooldown config, behavior, timeline example
 - `cli.md` — init, start, validate, run, hash commands
 - `notifications.md` — templates, Sprig functions, variable interpolation, service options, Shoutrrr delivery

@@ -13,9 +13,10 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "sznuper",
-	Short: "Monitoring daemon for Linux",
-	Long:  "Sznuper is a single-binary monitoring daemon. It runs checks, sends notifications via Shoutrrr. No database, no UI — just YAML config and a process.",
+	Use:     "sznuper",
+	Short:   "A lightweight server monitor that runs healthchecks and sends notifications",
+	Long:    "A lightweight server monitor that runs healthchecks and sends notifications — Discord, Slack, Telegram, Teams, and more.",
+	Version: version,
 }
 
 func init() {}

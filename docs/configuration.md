@@ -108,7 +108,7 @@ alerts:
   - name: ssh_login
     healthcheck: file://ssh_login
     trigger:
-      watch: /var/log/auth.log            # [TODO] file watch trigger not yet implemented
+      watch: /var/log/auth.log
     timeout: 30s
     args:
       watch: all

@@ -1,10 +1,8 @@
 # sznuper — Overview
 
-sznuper is a single-binary daemon that sits on a Linux host, watches for system events, and sends notifications to the places you care about. No dashboard, no database, no web UI — just a YAML config file and a process.
+A lightweight server monitor that runs healthchecks and sends notifications — Discord, Slack, Telegram, Teams, and more.
 
-It runs a set of healthchecks — some bundled (CPU, memory, disk, SSH logins, systemd unit failures), some user-defined (any executable that returns a status and key-value output). When a healthcheck triggers, it routes a notification through one or more services according to the config. It handles cooldowns, per-alert overrides, and templating so raw scripts don't have to.
-
-**One-liner pitch:** "Monit meets ntfy — a single binary that replaces your scattered cron alert scripts with a config-driven daemon and modern notification providers."
+It runs a set of healthchecks — some bundled (CPU, memory, disk, SSH logins via journald), some user-defined (any executable that returns a status and key-value output). When a healthcheck triggers, it routes a notification through one or more services according to the config. It handles cooldowns, per-alert overrides, and templating so raw scripts don't have to.
 
 ---
 

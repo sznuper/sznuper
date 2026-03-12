@@ -348,7 +348,7 @@ The daemon treats all healthchecks identically. The distinction between bundled 
 
 | Layer                  | Language              | Why                                            |
 | ---------------------- | --------------------- | ---------------------------------------------- |
-| Daemon (`sznuper`)     | Go                    | Shoutrrr, Sprig, envsubst; fsnotify planned [TODO]; robfig/cron integrated |
+| Daemon (`sznuper`)     | Go                    | Shoutrrr, Sprig, envsubst, fsnotify, robfig/cron |
 | Official healthchecks   | C (Cosmopolitan Libc) | Portable single binary, direct syscalls        |
 | User/community healthchecks | Anything          | User's choice and responsibility               |
 
@@ -403,9 +403,9 @@ healthchecks/
 HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
-### Example: watch healthcheck invocation [TODO]
+### Example: watch healthcheck invocation
 
-> **[TODO]** File watch trigger not yet implemented. Environment variables `HEALTHCHECK_FILE` and `HEALTHCHECK_LINE_COUNT` are not yet set by the daemon.
+> **Note:** The watch trigger works, but environment variables `HEALTHCHECK_FILE` and `HEALTHCHECK_LINE_COUNT` are not yet set by the daemon.
 
 ```
 HEALTHCHECK_TRIGGER=watch HEALTHCHECK_FILE=/var/log/auth.log HEALTHCHECK_LINE_COUNT=3 HEALTHCHECK_ARG_WATCH=all HEALTHCHECK_ARG_EXCLUDE_USERS=deploy /etc/sznuper/healthchecks/ssh_login <<< "line1\nline2\nline3"

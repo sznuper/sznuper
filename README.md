@@ -1,6 +1,6 @@
 # Sznuper
 
-Sznuper is a single-binary monitoring daemon for Linux servers. It runs healthchecks on your system and sends notifications when something needs attention — disk filling up, a service going down, a suspicious SSH login.
+A lightweight server monitor that runs healthchecks and sends notifications — Discord, Slack, Telegram, Teams, and more.
 
 No dashboard. No database. No UI. Just a YAML config, a binary, and alerts delivered to Telegram, Slack, email, or any service supported by [Shoutrrr](https://containrrr.dev/shoutrrr/).
 
