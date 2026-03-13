@@ -55,12 +55,16 @@ detect_install_paths() {
 download_binary() {
     need curl
 
-    info "Fetching latest release..."
-    TAG=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
-        | grep '"tag_name"' | head -1 | cut -d'"' -f4)
+    if [ -n "${VERSION:-}" ]; then
+        TAG="$VERSION"
+    else
+        info "Fetching latest release..."
+        TAG=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+            | grep '"tag_name"' | head -1 | cut -d'"' -f4)
 
-    if [ -z "$TAG" ]; then
-        err "Could not determine latest release"
+        if [ -z "$TAG" ]; then
+            err "Could not determine latest release"
+        fi
     fi
 
     ASSET="${BINARY_NAME}-linux-${ARCH}"
@@ -81,8 +85,13 @@ init_config() {
     fi
 
     info "Initializing config..."
-    "$BIN_DIR/$BINARY_NAME" init
-    ok "Config created at $CONFIG_PATH"
+
+    # When run via curl|sh, stdin is the pipe — try /dev/tty for interactive init
+    if "$BIN_DIR/$BINARY_NAME" init < /dev/tty 2>/dev/null; then
+        ok "Config created at $CONFIG_PATH"
+    else
+        warn "Skipped config init (no TTY) — run 'sznuper init' manually"
+    fi
 }
 
 setup_systemd() {
