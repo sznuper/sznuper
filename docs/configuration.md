@@ -3,9 +3,9 @@
 ## Config File Location
 
 The daemon looks for config in this order:
-1. Explicit flag: `sznuper --config /path/to/config.yaml`
-2. User: `~/.config/sznuper/config.yaml`
-3. System: `/etc/sznuper/config.yaml`
+1. Explicit flag: `sznuper --config /path/to/config.yml`
+2. User: `~/.config/sznuper/config.yml`
+3. System: `/etc/sznuper/config.yml`
 
 ## File Layout
 
@@ -14,7 +14,7 @@ The daemon looks for config in this order:
 ```
 /usr/bin/sznuper                          # binary
 /etc/sznuper/
-  config.yaml                             # main config
+  config.yml                             # main config
   healthchecks/                            # file:// healthchecks
     disk_usage                            # bundled, Cosmopolitan portable binary
     cpu_usage                             # bundled, Cosmopolitan portable binary
@@ -33,7 +33,7 @@ The daemon looks for config in this order:
 ```
 ~/.local/bin/sznuper                      # binary
 ~/.config/sznuper/
-  config.yaml
+  config.yml
   healthchecks/
 ~/.cache/sznuper/                         # https:// cached scripts
 ~/.local/state/sznuper/logs/              # daemon log

@@ -26,16 +26,16 @@ func Write(cfg *Config, path string) error {
 }
 
 // DefaultWritePath returns the default config write location:
-// /etc/sznuper/config.yaml for root, ~/.config/sznuper/config.yaml otherwise.
+// /etc/sznuper/config.yml for root, ~/.config/sznuper/config.yml otherwise.
 func DefaultWritePath() string {
 	if os.Getuid() == 0 {
-		return "/etc/sznuper/config.yaml"
+		return "/etc/sznuper/config.yml"
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "config.yaml"
+		return "config.yml"
 	}
-	return filepath.Join(home, ".config", "sznuper", "config.yaml")
+	return filepath.Join(home, ".config", "sznuper", "config.yml")
 }
 
 // DefaultOptions returns sensible default options based on whether

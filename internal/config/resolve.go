@@ -10,9 +10,9 @@ import (
 func DefaultConfigPaths() []string {
 	var paths []string
 	if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".config", "sznuper", "config.yaml"))
+		paths = append(paths, filepath.Join(home, ".config", "sznuper", "config.yml"))
 	}
-	paths = append(paths, "/etc/sznuper/config.yaml")
+	paths = append(paths, "/etc/sznuper/config.yml")
 	return paths
 }
 

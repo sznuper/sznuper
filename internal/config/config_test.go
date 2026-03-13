@@ -11,7 +11,7 @@ func TestLoadExampleConfig(t *testing.T) {
 	t.Setenv("TELEGRAM_CHAT_ID", "-100123456789")
 
 	root := findProjectRoot(t)
-	cfg, err := Load(filepath.Join(root, "config.example.yaml"))
+	cfg, err := Load(filepath.Join(root, "config.example.yml"))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -286,7 +286,7 @@ alerts:
 func loadErr(t *testing.T, yml string) error {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
+	path := filepath.Join(dir, "config.yml")
 	if err := os.WriteFile(path, []byte(yml), 0644); err != nil {
 		t.Fatalf("writing temp config: %v", err)
 	}
@@ -297,7 +297,7 @@ func loadErr(t *testing.T, yml string) error {
 func loadFromString(t *testing.T, yml string) *Config {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
+	path := filepath.Join(dir, "config.yml")
 	if err := os.WriteFile(path, []byte(yml), 0644); err != nil {
 		t.Fatalf("writing temp config: %v", err)
 	}
