@@ -5,9 +5,14 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version tag (e.g. v0.1.0)"
-        required: true
+      bump:
+        description: "Version bump"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: minor
       prerelease:
         description: "Mark as prerelease"
         type: boolean
@@ -42,10 +47,20 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            latest=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "v0.0.0")
+            latest="${latest#v}"
+            IFS='.' read -r major minor patch <<< "$latest"
+            case "${{ inputs.bump }}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            echo "tag=v${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Build
         env:
@@ -83,10 +98,20 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            latest=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "v0.0.0")
+            latest="${latest#v}"
+            IFS='.' read -r major minor patch <<< "$latest"
+            case "${{ inputs.bump }}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            echo "tag=v${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create tag (workflow_dispatch only)
         if: github.event_name == 'workflow_dispatch'
@@ -99,7 +124,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           FLAGS="--generate-notes"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
             FLAGS="$FLAGS --prerelease"
           fi
           gh release create "${{ steps.version.outputs.tag }}" \
