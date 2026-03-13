@@ -23,7 +23,7 @@ func execLifecycle(params map[string]string) (*ExecResult, error) {
 	}
 
 	var b strings.Builder
-	b.WriteString("status=ok\n")
+	b.WriteString("status=warning\n")
 	b.WriteString("event=" + event + "\n")
 	if alerts, ok := params["alerts"]; ok {
 		b.WriteString("alerts=" + alerts + "\n")
