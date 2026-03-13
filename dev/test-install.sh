@@ -81,8 +81,8 @@ globals:
   hostname: e2e-test
 CONF
 
-log "Restarting systemd service..."
-ssh_run "systemctl restart sznuper"
+log "Starting systemd service..."
+ssh_run "systemctl start sznuper"
 sleep 2
 
 # ── Verify ───────────────────────────────────────────────────────────────────

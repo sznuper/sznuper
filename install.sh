@@ -87,7 +87,7 @@ init_config() {
     info "Initializing config..."
 
     # When run via curl|sh, stdin is the pipe — try /dev/tty for interactive init
-    if "$BIN_DIR/$BINARY_NAME" init < /dev/tty 2>/dev/null; then
+    if [ -e /dev/tty ] && "$BIN_DIR/$BINARY_NAME" init < /dev/tty; then
         ok "Config created at $CONFIG_PATH"
     else
         warn "Skipped config init (no TTY) — run 'sznuper init' manually"
@@ -124,9 +124,14 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
-    systemctl enable --now sznuper
 
-    ok "Systemd service installed and started"
+    if [ -f "$CONFIG_PATH" ]; then
+        systemctl enable --now sznuper
+        ok "Systemd service installed and started"
+    else
+        systemctl enable sznuper
+        ok "Systemd service installed (will start after config is created)"
+    fi
 }
 
 print_summary() {
