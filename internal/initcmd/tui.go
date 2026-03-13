@@ -197,9 +197,16 @@ func (m Model) View() string {
 }
 
 func (m *Model) buildConfig() {
+	existing := make(map[string]bool)
+	for name := range m.cfg.Services {
+		existing[name] = true
+	}
+
 	if m.cfg.Services == nil {
 		m.cfg.Services = make(map[string]config.Service)
 	}
+
+	var added []string
 	for _, svc := range m.list.services {
 		s := config.Service{URL: svc.url}
 		if len(svc.params) > 0 {
@@ -209,6 +216,16 @@ func (m *Model) buildConfig() {
 			}
 		}
 		m.cfg.Services[svc.name] = s
+		if !existing[svc.name] {
+			added = append(added, svc.name)
+		}
+	}
+
+	for i := range m.cfg.Alerts {
+		for _, name := range added {
+			m.cfg.Alerts[i].Notify = append(m.cfg.Alerts[i].Notify,
+				config.NotifyTarget{Service: name})
+		}
 	}
 }
 

@@ -128,6 +128,7 @@ func runNonInteractive(cfg *config.Config, outPath string) error {
 		cfg.Services = make(map[string]config.Service)
 	}
 
+	var added []string
 	for _, entry := range initAddService {
 		name, url, ok := strings.Cut(entry, ":")
 		if !ok || name == "" || url == "" {
@@ -137,6 +138,14 @@ func runNonInteractive(cfg *config.Config, outPath string) error {
 			return fmt.Errorf("service %q already exists in config", name)
 		}
 		cfg.Services[name] = config.Service{URL: url}
+		added = append(added, name)
+	}
+
+	for i := range cfg.Alerts {
+		for _, name := range added {
+			cfg.Alerts[i].Notify = append(cfg.Alerts[i].Notify,
+				config.NotifyTarget{Service: name})
+		}
 	}
 
 	if err := config.Write(cfg, outPath); err != nil {
