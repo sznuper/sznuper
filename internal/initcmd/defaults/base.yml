@@ -4,7 +4,8 @@ services:
 
 alerts:
   - name: disk_usage
-    healthcheck: file://disk_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/disk_usage
+    sha256: 336d1a978140eb8d63d4f9699b5b7484a6f474f2eb8df2e19da3ba925de6ae4e
     trigger:
       interval: 30s
     args:
@@ -22,7 +23,8 @@ alerts:
       - logger
 
   - name: memory_usage
-    healthcheck: file://memory_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/memory_usage
+    sha256: 49b7985178bcbad1986aae9d703e982ca692a49206f4f906a80fadbf840811d6
     trigger:
       interval: 30s
     args:
@@ -35,5 +37,23 @@ alerts:
     template: |-
       [{{healthcheck.status | upper}}] {{globals.hostname}}:
       Memory at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+    notify:
+      - logger
+
+  - name: cpu_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/cpu_usage
+    sha256: 516160b6b69054642b67a816c229417c42acd5a1f0579c95421fb94d63f8d99a
+    trigger:
+      interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+    cooldown:
+      warning: 10m
+      critical: 1m
+      recovery: true
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      CPU at {{healthcheck.usage_percent}}%
     notify:
       - logger
