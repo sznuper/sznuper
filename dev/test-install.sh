@@ -111,7 +111,7 @@ check "version matches"         "sznuper version | grep -qF '$VERSION'"
 check "config exists"           "test -f /etc/sznuper/config.yml"
 check "systemd unit installed"  "test -f /etc/systemd/system/sznuper.service"
 check "systemd enabled"         "systemctl is-enabled sznuper"
-check "systemd active"          "systemctl is-active sznuper"
+check "systemd ran ok"          "systemctl show -p Result --value sznuper | grep -qF success"
 
 if [[ $FAIL -gt 0 ]]; then
     echo ""
