@@ -87,7 +87,7 @@ init_config() {
     info "Initializing config..."
 
     # When run via curl|sh, stdin is the pipe — try /dev/tty for interactive init
-    if [ -e /dev/tty ] && "$BIN_DIR/$BINARY_NAME" init < /dev/tty; then
+    if (exec < /dev/tty) 2>/dev/null && "$BIN_DIR/$BINARY_NAME" init < /dev/tty; then
         ok "Config created at $CONFIG_PATH"
     else
         warn "Skipped config init (no TTY) — run 'sznuper init' manually"

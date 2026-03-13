@@ -113,6 +113,15 @@ check "systemd unit installed"  "test -f /etc/systemd/system/sznuper.service"
 check "systemd enabled"         "systemctl is-enabled sznuper"
 check "systemd active"          "systemctl is-active sznuper"
 
+if [[ $FAIL -gt 0 ]]; then
+    echo ""
+    log "Debug: systemctl status sznuper"
+    ssh_run "systemctl status sznuper 2>&1" || true
+    echo ""
+    log "Debug: journalctl -u sznuper"
+    ssh_run "journalctl -u sznuper --no-pager -n 20 2>&1" || true
+fi
+
 echo ""
 log "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
