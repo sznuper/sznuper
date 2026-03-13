@@ -76,6 +76,7 @@ jobs:
           for dir in artifacts/sznuper-*; do
             name=$(basename "$dir")
             cp "$dir/sznuper" "release/$name"
+            chmod +x "release/$name"
           done
 
       - name: Determine version
