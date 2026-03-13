@@ -62,7 +62,7 @@ Runs an arbitrary command and feeds its stdout to the healthcheck via stdin. Des
 
 ```yaml
 trigger:
-  pipe: "journalctl -f -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+  pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
 ```
 
 Behavior:
@@ -77,7 +77,7 @@ Example — real-time SSH failure detection via the systemd journal (works on an
 - name: ssh_failures
   healthcheck: file://ssh_journal
   trigger:
-    pipe: "journalctl -f -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+    pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
   args:
     alert_on: failure
     threshold_warn_count: 1
@@ -94,7 +94,7 @@ Advanced mode — pass additional journal fields through to the template:
 - name: ssh_failures
   healthcheck: file://ssh_journal
   trigger:
-    pipe: "journalctl -f -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
+    pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
   args:
     alert_on: failure
     threshold_warn_count: 1
