@@ -73,7 +73,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 func loadBaseConfig() (*config.Config, error) {
 	if initFrom == "" {
-		return &config.Config{}, nil
+		return initcmd.DefaultConfig()
 	}
 
 	data, err := readSource(initFrom)

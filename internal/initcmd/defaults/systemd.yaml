@@ -1,0 +1,54 @@
+services:
+  logger:
+    url: logger://
+
+alerts:
+  - name: disk_usage
+    healthcheck: file://disk_usage
+    trigger:
+      interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+      mount: /
+    cooldown:
+      warning: 10m
+      critical: 1m
+      recovery: true
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      Disk {{args.mount}} at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+    notify:
+      - logger
+
+  - name: memory_usage
+    healthcheck: file://memory_usage
+    trigger:
+      interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+    cooldown:
+      warning: 10m
+      critical: 1m
+      recovery: true
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      Memory at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+    notify:
+      - logger
+
+  - name: ssh_journal
+    healthcheck: file://ssh_journal
+    trigger:
+      pipe: journalctl -f -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+    args:
+      alert_on: failure
+      threshold_warn_count: 1
+      threshold_crit_count: 20
+    cooldown: 5m
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      SSH {{healthcheck.event}} from {{healthcheck.host}} as {{healthcheck.user}}
+    notify:
+      - logger

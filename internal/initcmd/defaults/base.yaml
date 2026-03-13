@@ -1,0 +1,39 @@
+services:
+  logger:
+    url: logger://
+
+alerts:
+  - name: disk_usage
+    healthcheck: file://disk_usage
+    trigger:
+      interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+      mount: /
+    cooldown:
+      warning: 10m
+      critical: 1m
+      recovery: true
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      Disk {{args.mount}} at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+    notify:
+      - logger
+
+  - name: memory_usage
+    healthcheck: file://memory_usage
+    trigger:
+      interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+    cooldown:
+      warning: 10m
+      critical: 1m
+      recovery: true
+    template: |-
+      [{{healthcheck.status | upper}}] {{globals.hostname}}:
+      Memory at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+    notify:
+      - logger
