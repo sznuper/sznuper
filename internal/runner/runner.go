@@ -42,7 +42,7 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			for res := range r.RunAlert(ctx, &r.cfg.Alerts[i], dryRun, nil, nil) {
+			for res := range r.RunAlertOpts(ctx, &r.cfg.Alerts[i], RunOpts{DryRun: dryRun}) {
 				out <- res
 			}
 		}(i)
@@ -54,6 +54,14 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 	return out
 }
 
+// RunOpts holds optional parameters for RunAlert.
+type RunOpts struct {
+	DryRun        bool
+	Cooldown      *cooldown.State
+	Stdin         []byte
+	BuiltinParams map[string]string // params for builtin:// healthchecks
+}
+
 // RunAlert executes a single alert through the full pipeline asynchronously.
 // It returns a channel that yields one Result per healthcheck record, then closes.
 // Single-record healthchecks yield exactly one result (same as before).
@@ -61,17 +69,25 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 // Pass a non-nil cd to enforce cooldown; nil preserves the original behaviour (ok skips notify).
 // Pass non-nil stdin to pipe bytes to the healthcheck process via stdin.
 func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) <-chan Result {
+	return r.RunAlertOpts(ctx, alert, RunOpts{DryRun: dryRun, Cooldown: cd, Stdin: stdin})
+}
+
+// RunAlertOpts is like RunAlert but accepts RunOpts for extended options.
+func (r *Runner) RunAlertOpts(ctx context.Context, alert *config.Alert, opts RunOpts) <-chan Result {
 	ch := make(chan Result, 8)
 	go func() {
 		defer close(ch)
-		r.runAlert(ctx, alert, dryRun, cd, stdin, ch)
+		r.runAlert(ctx, alert, opts, ch)
 	}()
 	return ch
 }
 
-func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte, out chan<- Result) {
+func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts, out chan<- Result) {
 	log := r.logger.With("alert", alert.Name)
 	start := time.Now()
+
+	dryRun := opts.DryRun
+	cd := opts.Cooldown
 
 	base := Result{
 		AlertName:      alert.Name,
@@ -102,16 +118,21 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, dryRun bool,
 	log.Debug("healthcheck resolved", "path", resolved.Path, "scheme", resolved.Scheme)
 
 	// Stage 2: Execute healthcheck.
-	timeout, _ := time.ParseDuration(alert.Timeout)
-	log.Info("executing healthcheck", "path", resolved.Path, "timeout", timeout)
-
-	execResult, err := healthcheck.Exec(ctx, healthcheck.ExecOpts{
-		Path:        resolved.Path,
-		Timeout:     timeout,
-		TriggerType: detectTriggerType(alert.Trigger),
-		Args:        alert.Args,
-		Stdin:       stdin,
-	})
+	var execResult *healthcheck.ExecResult
+	if resolved.Scheme == "builtin" {
+		log.Info("executing builtin healthcheck", "name", resolved.Path)
+		execResult, err = healthcheck.ExecBuiltin(resolved.Path, opts.BuiltinParams)
+	} else {
+		timeout, _ := time.ParseDuration(alert.Timeout)
+		log.Info("executing healthcheck", "path", resolved.Path, "timeout", timeout)
+		execResult, err = healthcheck.Exec(ctx, healthcheck.ExecOpts{
+			Path:        resolved.Path,
+			Timeout:     timeout,
+			TriggerType: detectTriggerType(alert.Trigger),
+			Args:        alert.Args,
+			Stdin:       opts.Stdin,
+		})
+	}
 	if err != nil {
 		base.Err = err
 		base.ErrStage = "exec"
@@ -252,6 +273,8 @@ func mergeArrays(global, record map[string]any) map[string]any {
 
 func detectTriggerType(t config.Trigger) string {
 	switch {
+	case t.Lifecycle:
+		return "lifecycle"
 	case t.Pipe != "":
 		return "pipe"
 	case t.Watch != "":

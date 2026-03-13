@@ -41,10 +41,11 @@ type Alert struct {
 }
 
 type Trigger struct {
-	Interval string `yaml:"interval,omitempty"`
-	Cron     string `yaml:"cron,omitempty"`
-	Watch    string `yaml:"watch,omitempty"`
-	Pipe     string `yaml:"pipe,omitempty"`
+	Interval  string `yaml:"interval,omitempty"`
+	Cron      string `yaml:"cron,omitempty"`
+	Watch     string `yaml:"watch,omitempty"`
+	Pipe      string `yaml:"pipe,omitempty"`
+	Lifecycle bool   `yaml:"lifecycle,omitempty"`
 }
 
 // SHA256 handles both string hashes and `false` (opt-out).

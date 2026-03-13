@@ -32,6 +32,9 @@ type ResolveOpts struct {
 //   - https://...      → download with sha256 verification and caching
 func Resolve(uri string, opts ResolveOpts) (*ResolvedHealthcheck, error) {
 	switch {
+	case strings.HasPrefix(uri, "builtin://"):
+		name := strings.TrimPrefix(uri, "builtin://")
+		return &ResolvedHealthcheck{URI: uri, Path: name, Scheme: "builtin"}, nil
 	case strings.HasPrefix(uri, "file://"):
 		return resolveFile(uri, opts.HealthchecksDir)
 	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):

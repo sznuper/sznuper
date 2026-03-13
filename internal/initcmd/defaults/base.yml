@@ -3,6 +3,15 @@ services:
     url: logger://
 
 alerts:
+  - name: sznuper_lifecycle
+    healthcheck: builtin://lifecycle
+    trigger:
+      lifecycle: true
+    template: |-
+      [{{healthcheck.event | upper}}] {{globals.hostname}}: sznuper {{healthcheck.event}}
+    notify:
+      - logger
+
   - name: disk_usage
     healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/disk_usage
     sha256: 336d1a978140eb8d63d4f9699b5b7484a6f474f2eb8df2e19da3ba925de6ae4e

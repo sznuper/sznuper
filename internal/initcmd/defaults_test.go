@@ -41,8 +41,8 @@ func TestDefaultConfig(t *testing.T) {
 		t.Error("expected logger service in default config")
 	}
 
-	if len(cfg.Alerts) < 2 {
-		t.Errorf("expected at least 2 alerts, got %d", len(cfg.Alerts))
+	if len(cfg.Alerts) < 3 {
+		t.Errorf("expected at least 3 alerts, got %d", len(cfg.Alerts))
 	}
 }
 

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -28,16 +29,55 @@ func New(r *runner.Runner, logger *slog.Logger, onResult OnResult) *Scheduler {
 }
 
 // Start launches one goroutine per alert and blocks until ctx is done.
+// Lifecycle alerts fire at start (before loops) and stop (after loops exit).
 func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun bool) {
+	var lifecycle, regular []config.Alert
+	for _, a := range alerts {
+		if a.Trigger.Lifecycle {
+			lifecycle = append(lifecycle, a)
+		} else {
+			regular = append(regular, a)
+		}
+	}
+
+	totalAlerts := len(alerts)
+
+	// Fire lifecycle alerts with event=started (blocking).
+	s.fireLifecycle(ctx, lifecycle, "started", totalAlerts, dryRun)
+
+	// Run regular alert loops.
 	var wg sync.WaitGroup
-	for i := range alerts {
+	for i := range regular {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			s.runAlertLoop(ctx, &alerts[i], dryRun)
+			s.runAlertLoop(ctx, &regular[i], dryRun)
 		}(i)
 	}
 	wg.Wait()
+
+	// Fire lifecycle alerts with event=stopped (fresh context so HTTP still works).
+	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	s.fireLifecycle(stopCtx, lifecycle, "stopped", totalAlerts, dryRun)
+}
+
+// fireLifecycle runs all lifecycle alerts with the given event, blocking until done.
+func (s *Scheduler) fireLifecycle(ctx context.Context, alerts []config.Alert, event string, totalAlerts int, dryRun bool) {
+	params := map[string]string{
+		"event":  event,
+		"alerts": strconv.Itoa(totalAlerts),
+	}
+	for i := range alerts {
+		for result := range s.runner.RunAlertOpts(ctx, &alerts[i], runner.RunOpts{
+			DryRun:        dryRun,
+			BuiltinParams: params,
+		}) {
+			if s.onResult != nil {
+				s.onResult(result)
+			}
+		}
+	}
 }
 
 func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRun bool) {
