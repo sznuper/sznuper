@@ -13,8 +13,8 @@ on:
           - minor
           - major
         default: minor
-      prerelease:
-        description: "Mark as prerelease"
+      latest:
+        description: "Set as latest release"
         type: boolean
         default: false
 
@@ -124,7 +124,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           FLAGS="--generate-notes"
-          if [ "${{ inputs.prerelease }}" = "true" ]; then
+          if [ "${{ inputs.latest }}" != "true" ]; then
             FLAGS="$FLAGS --prerelease"
           fi
           gh release create "${{ steps.version.outputs.tag }}" \
