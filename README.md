@@ -4,6 +4,20 @@ A lightweight server monitor that runs healthchecks and sends notifications — 
 
 No dashboard. No database. No UI. Just a YAML config, a binary, and alerts delivered to Telegram, Slack, email, or any service supported by [Shoutrrr](https://containrrr.dev/shoutrrr/).
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sznuper/sznuper/main/install.sh | sh
+```
+
+This installs the binary, runs `sznuper init` to create a config, and sets up a systemd service (root only).
+
+To pin a specific version:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sznuper/sznuper/main/install.sh | VERSION=v0.11.0 sh
+```
+
 ## Repositories
 
 - **[sznuper](https://github.com/sznuper/sznuper)** — the daemon, written in Go
