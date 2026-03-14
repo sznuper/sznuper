@@ -2,75 +2,61 @@ package cooldown
 
 import "time"
 
-// Infinite is a sentinel duration meaning "suppress until ok resets the cycle".
+// Infinite is a sentinel duration meaning "suppress until cooldowns are reset".
 const Infinite time.Duration = -1
 
-// State tracks per-status cooldown for one alert.
-// Warning and critical have independent timers.
+// State tracks per-event-type cooldown for one alert.
 type State struct {
-	warning  timer
-	critical timer
-	recovery bool
-	last     string // "" | "warning" | "critical" | "ok"
-	now      func() time.Time
+	timers map[string]*timer
+	now    func() time.Time
 }
 
-// New creates a State. Use Infinite for suppress-until-ok behaviour.
-// now may be nil (defaults to time.Now).
-func New(warning, critical time.Duration, recovery bool, now func() time.Time) *State {
+// New creates a State. now may be nil (defaults to time.Now).
+func New(now func() time.Time) *State {
 	if now == nil {
 		now = time.Now
 	}
 	return &State{
-		warning:  timer{duration: warning},
-		critical: timer{duration: critical},
-		recovery: recovery,
-		now:      now,
+		timers: make(map[string]*timer),
+		now:    now,
 	}
 }
 
-// Check evaluates whether to notify and advances internal state.
-// Returns (shouldNotify, isRecovery).
+// Check evaluates whether to notify for the given event type and advances
+// internal state. Returns true if the notification should fire.
 //
-// For "warning"/"critical": notifies when cooldown is not active, suppresses otherwise.
-// For "ok": sends a recovery notification if recovery=true and last status was an alert;
-// always resets all timers on ok.
-func (s *State) Check(status string) (notify bool, isRecovery bool) {
-	now := s.now()
-	switch status {
-	case "warning", "critical":
-		t := s.timerFor(status)
-		if t.active(now) {
-			return false, false
-		}
-		t.start(now)
-		s.last = status
-		return true, false
-
-	case "ok":
-		wasAlerted := s.last == "warning" || s.last == "critical"
-		s.warning.reset()
-		s.critical.reset()
-		if !wasAlerted {
-			return false, false
-		}
-		s.last = "ok"
-		return s.recovery, s.recovery
+// A duration of 0 means no cooldown — always notifies.
+// Infinite means suppress until ResetAll is called.
+func (s *State) Check(eventType string, duration time.Duration) bool {
+	if duration == 0 {
+		return true
 	}
 
-	return false, false
+	now := s.now()
+	t, ok := s.timers[eventType]
+	if !ok {
+		t = &timer{}
+		s.timers[eventType] = t
+	}
+
+	if t.active(now) {
+		return false
+	}
+	t.start(now, duration)
+	return true
 }
 
-func (s *State) timerFor(status string) *timer {
-	if status == "warning" {
-		return &s.warning
+// ResetAll clears all cooldown timers.
+// Called on recovery (unhealthy→healthy transition).
+func (s *State) ResetAll() {
+	for _, t := range s.timers {
+		t.reset()
 	}
-	return &s.critical
 }
 
 type timer struct {
-	duration time.Duration
 	started  bool
+	duration time.Duration
 	expiry   time.Time
 }
 
@@ -84,14 +70,16 @@ func (t *timer) active(now time.Time) bool {
 	return now.Before(t.expiry)
 }
 
-func (t *timer) start(now time.Time) {
+func (t *timer) start(now time.Time, duration time.Duration) {
 	t.started = true
-	if t.duration != Infinite {
-		t.expiry = now.Add(t.duration)
+	t.duration = duration
+	if duration != Infinite {
+		t.expiry = now.Add(duration)
 	}
 }
 
 func (t *timer) reset() {
 	t.started = false
+	t.duration = 0
 	t.expiry = time.Time{}
 }

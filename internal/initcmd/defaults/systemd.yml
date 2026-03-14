@@ -4,13 +4,14 @@ alerts:
     sha256: 584deeb1b474b243b6ad6d40fd54735179592f9a57ad6675a6b82ace18e7e52f
     trigger:
       pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
-    args:
-      alert_on: failure
-      threshold_warn_count: 1
-      threshold_crit_count: 20
     cooldown: 5m
     template: |-
-      [{{healthcheck.status | upper}}] {{globals.hostname}}:
-      SSH {{healthcheck.event}} from {{healthcheck.host}} as {{healthcheck.user}}
+      SSH {{event.type}} from {{event.host}} as {{event.user}}
     notify:
       - logger
+    events:
+      on_unmatched: drop
+      override:
+        failure:
+          cooldown: 1m
+        login: {}

@@ -12,27 +12,26 @@ import (
 
 // TemplateData holds all data available to notification templates.
 type TemplateData struct {
-	Globals     map[string]any
-	Alert       map[string]string
-	Healthcheck map[string]any // scalar fields (string) and array fields ([]string, []int64, []bool)
-	Args        map[string]string
+	Globals map[string]any
+	Alert   map[string]string
+	Event   map[string]any // scalar fields (string) and array fields ([]string, []int64, []bool)
+	Args    map[string]string
 }
 
-// BuildTemplateData constructs template data from healthcheck output and config.
-func BuildTemplateData(globals map[string]any, alertName string, healthcheckFields map[string]string, healthcheckArrays map[string]any, args map[string]any) TemplateData {
+// BuildTemplateData constructs template data from event output and config.
+func BuildTemplateData(globals map[string]any, alertName string, eventFields map[string]string, eventArrays map[string]any, args map[string]any) TemplateData {
 	alert := map[string]string{
 		"name": alertName,
 	}
 
 	// Merge scalar fields and array fields into a single map[string]any.
-	hc := make(map[string]any, len(healthcheckFields)+1+len(healthcheckArrays))
-	for k, v := range healthcheckFields {
-		hc[k] = v
+	ev := make(map[string]any, len(eventFields)+len(eventArrays))
+	for k, v := range eventFields {
+		ev[k] = v
 	}
-	for k, v := range healthcheckArrays {
-		hc[k] = v
+	for k, v := range eventArrays {
+		ev[k] = v
 	}
-	hc["status_emoji"] = statusEmoji(healthcheckFields["status"])
 
 	// Convert args to string map.
 	argsStr := make(map[string]string, len(args))
@@ -41,42 +40,29 @@ func BuildTemplateData(globals map[string]any, alertName string, healthcheckFiel
 	}
 
 	return TemplateData{
-		Globals:     globals,
-		Alert:       alert,
-		Healthcheck: hc,
-		Args:        argsStr,
-	}
-}
-
-func statusEmoji(status string) string {
-	switch status {
-	case "critical":
-		return "\U0001f534" // 🔴
-	case "warning":
-		return "\U0001f7e1" // 🟡
-	case "ok":
-		return "\U0001f7e2" // 🟢
-	default:
-		return "\u2753" // ❓
+		Globals: globals,
+		Alert:   alert,
+		Event:   ev,
+		Args:    argsStr,
 	}
 }
 
 // Render executes a Go text/template string with Sprig functions and the
-// custom accessor functions (healthcheck, globals, alert, args).
+// custom accessor functions (event, globals, alert, args).
 func Render(tmplStr string, data TemplateData) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 
-	// Register accessor functions so {{healthcheck.status}} works:
-	// "healthcheck" returns the healthcheck map, then ".status" accesses a key.
-	funcMap["healthcheck"] = func() map[string]any { return data.Healthcheck }
+	// Register accessor functions so {{event.type}} works:
+	// "event" returns the event map, then ".type" accesses a key.
+	funcMap["event"] = func() map[string]any { return data.Event }
 	funcMap["globals"] = func() map[string]any { return data.Globals }
 	funcMap["alert"] = func() map[string]string { return data.Alert }
 	funcMap["args"] = func() map[string]string { return data.Args }
 
 	// Array functions. Piped value is the last argument, so usage looks like:
-	//   {{healthcheck.hosts | arrayJoin ", "}}
-	//   {{healthcheck.counts | arrayMax}}
-	//   {{healthcheck.hosts | arrayContains "1.2.3.4"}}
+	//   {{event.hosts | arrayJoin ", "}}
+	//   {{event.counts | arrayMax}}
+	//   {{event.hosts | arrayContains "1.2.3.4"}}
 	funcMap["arrayJoin"] = func(sep string, arr any) (string, error) {
 		switch v := arr.(type) {
 		case []string:

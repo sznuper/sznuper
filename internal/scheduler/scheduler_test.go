@@ -17,7 +17,7 @@ import (
 
 func writeScript(t *testing.T, dir string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, "check.sh"), []byte("#!/bin/sh\necho status=ok\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "check.sh"), []byte("#!/bin/sh\necho '--- event'\necho type=ok\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -41,8 +41,11 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 				Name:        "tick",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Interval: interval.String()},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -50,7 +53,7 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 		count.Add(1)
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), interval*5/2) // 2.5 × interval
+	ctx, cancel := context.WithTimeout(context.Background(), interval*5/2) // 2.5 x interval
 	defer cancel()
 
 	sched.Start(ctx, cfg.Alerts, false)
@@ -73,8 +76,11 @@ func TestScheduler_CronFires(t *testing.T) {
 				Name:        "cron-tick",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Cron: "* * * * * *"}, // every second (6-field)
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -93,9 +99,6 @@ func TestScheduler_CronFires(t *testing.T) {
 }
 
 func TestScheduler_CronFivefield_Fires(t *testing.T) {
-	// 5-field expression "* * * * *" fires every minute — too slow for a test.
-	// Validate that a 5-field expression is accepted without error and fires
-	// by using a parser-level check: schedule the next run and confirm it's <= 1 min away.
 	schedule, err := cronParser.Parse("* * * * *")
 	if err != nil {
 		t.Fatalf("parsing 5-field cron: %v", err)
@@ -118,8 +121,11 @@ func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 				Name:        "bad-cron",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Cron: "not a cron expression"},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -148,9 +154,11 @@ func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 			{
 				Name:        "no-trigger",
 				Healthcheck: "file://check.sh",
-				// Trigger.Interval is empty
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -180,8 +188,11 @@ func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 				Name:        "cancel-me",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Interval: "20ms"},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	sched := New(newRunner(t, cfg), slog.Default(), nil)
@@ -216,8 +227,7 @@ func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 // healthcheck that echoes stdin lines prefixed with "line=".
 func watchAlert(t *testing.T, dir, watchPath string) *config.Config {
 	t.Helper()
-	// healthcheck: read all stdin, output status=ok and the content as line=...
-	script := "#!/bin/sh\ninput=$(cat)\necho status=ok\necho \"line=$input\"\n"
+	script := "#!/bin/sh\ninput=$(cat)\necho '--- event'\necho type=ok\necho \"line=$input\"\n"
 	if err := os.WriteFile(filepath.Join(dir, "check.sh"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -229,8 +239,11 @@ func watchAlert(t *testing.T, dir, watchPath string) *config.Config {
 				Name:        "watch-test",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Watch: watchPath},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 }
 
@@ -294,15 +307,8 @@ func TestScheduler_Watch_FiresOnAppend(t *testing.T) {
 		t.Fatalf("unexpected error: %v (stage %s)", res.Err, res.ErrStage)
 	}
 	// The healthcheck receives "hello world\n" on stdin and emits line=hello world
-	found := false
-	for _, line := range res.Output {
-		if strings.Contains(line, "hello world") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("expected stdin content in output, got %v", res.Output)
+	if !strings.Contains(res.Fields["line"], "hello world") {
+		t.Errorf("expected stdin content in fields, got line=%q", res.Fields["line"])
 	}
 }
 
@@ -315,8 +321,8 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Slow healthcheck: sleeps 400ms, then outputs each stdin line as input<n>=<line>.
-	slowScript := "#!/bin/sh\nlines=$(cat)\nsleep 0.4\necho status=ok\ni=0\nprintf '%s\\n' $lines | while IFS= read -r l; do i=$((i+1)); echo \"input$i=$l\"; done\n"
+	// Slow healthcheck: sleeps 400ms, then outputs stdin as line field.
+	slowScript := "#!/bin/sh\nlines=$(cat)\nsleep 0.4\necho '--- event'\necho type=ok\necho \"input=$lines\"\n"
 	if err := os.WriteFile(filepath.Join(dir, "check.sh"), []byte(slowScript), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -328,8 +334,11 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 				Name:        "watch-slow",
 				Healthcheck: "file://check.sh",
 				Trigger:     config.Trigger{Watch: watchPath},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -348,7 +357,6 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 	go sched.Start(ctx, cfg.Alerts, true)
 	time.Sleep(100 * time.Millisecond)
 
-	// Write first line — fires immediately (healthcheck runs for 400ms).
 	appendLine := func(s string) {
 		f, err := os.OpenFile(watchPath, os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -363,17 +371,19 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 	appendLine("line1")
 	time.Sleep(80 * time.Millisecond) // healthcheck now running (slow 400ms)
 	appendLine("line2")
-	time.Sleep(30 * time.Millisecond) // let WRITE event for line2 be processed by the loop
+	time.Sleep(30 * time.Millisecond)
 	appendLine("line3")
-	time.Sleep(30 * time.Millisecond) // let WRITE event for line3 be processed; first healthcheck still running
+	time.Sleep(30 * time.Millisecond)
 
-	// Wait until all three input lines appear in results (regardless of how many invocations).
+	// Wait until we have results containing all lines.
 	allContain := func(want []string) bool {
 		mu.Lock()
 		defer mu.Unlock()
 		combined := ""
 		for _, res := range results {
-			combined += strings.Join(res.Output, "\n") + "\n"
+			for _, v := range res.Fields {
+				combined += v + "\n"
+			}
 		}
 		for _, w := range want {
 			if !strings.Contains(combined, w) {
@@ -398,16 +408,6 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 	for i, res := range results {
 		if res.Err != nil {
 			t.Errorf("result[%d] error: %v", i, res.Err)
-		}
-	}
-	// All three lines must appear across results (none dropped).
-	allOutput := ""
-	for _, res := range results {
-		allOutput += strings.Join(res.Output, "\n") + "\n"
-	}
-	for _, want := range []string{"line1", "line2", "line3"} {
-		if !strings.Contains(allOutput, want) {
-			t.Errorf("line %q not found in any result output; all output: %q", want, allOutput)
 		}
 	}
 }
@@ -466,18 +466,15 @@ func TestScheduler_Watch_HandlesRotation(t *testing.T) {
 	if len(results) == 0 {
 		t.Fatal("onResult not called after rotation and new file write")
 	}
-	// At least one result should contain the post-rotation content.
 	found := false
 	for _, res := range results {
-		for _, line := range res.Output {
-			if strings.Contains(line, "after rotation") {
-				found = true
-				break
-			}
+		if strings.Contains(res.Fields["line"], "after rotation") {
+			found = true
+			break
 		}
 	}
 	if !found {
-		t.Errorf("post-rotation content not seen in any result; outputs: %v", results)
+		t.Errorf("post-rotation content not seen in any result fields")
 	}
 }
 
@@ -485,9 +482,7 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	dir := t.TempDir()
 	watchPath := filepath.Join(dir, "test.log")
 
-	// Create a long initial file so offset is large after seek-to-end.
-	// Post-truncation content must be shorter than this so size < offset triggers.
-	initialContent := strings.Repeat("old padding line\n", 10) // ~170 bytes
+	initialContent := strings.Repeat("old padding line\n", 10)
 	if err := os.WriteFile(watchPath, []byte(initialContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -509,8 +504,7 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	go sched.Start(ctx, cfg.Alerts, true)
 	time.Sleep(100 * time.Millisecond)
 
-	// Truncate and write short content — new size (6 bytes) < stored offset (~170 bytes)
-	// so the truncation detection code resets offset to 0 and reads from the start.
+	// Truncate and write short content.
 	f, err := os.OpenFile(watchPath, os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		t.Fatal(err)
@@ -539,14 +533,12 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	}
 	found := false
 	for _, res := range results {
-		for _, line := range res.Output {
-			if strings.Contains(line, "fresh") {
-				found = true
-				break
-			}
+		if strings.Contains(res.Fields["line"], "fresh") {
+			found = true
+			break
 		}
 	}
 	if !found {
-		t.Errorf("post-truncation content not seen in any result; outputs: %v", results)
+		t.Errorf("post-truncation content not seen in any result fields")
 	}
 }

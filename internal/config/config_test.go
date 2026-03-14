@@ -53,45 +53,40 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Errorf("timeout = %q, want %q", a.Timeout, "10s")
 	}
 
-	// Cooldown is set (simple or per-status)
-	if a.Cooldown.Simple == "" && a.Cooldown.Warning == "" {
-		t.Error("cooldown not set in example config")
+	// Cooldown
+	if a.Cooldown != "8s" {
+		t.Errorf("cooldown = %q, want %q", a.Cooldown, "8s")
 	}
 
 	// String notify
 	if len(a.Notify) != 1 || a.Notify[0].Service != "telegram" {
 		t.Errorf("notify = %v, want [telegram]", a.Notify)
 	}
+
+	// Events
+	if a.Events == nil {
+		t.Fatal("events is nil")
+	}
+	if len(a.Events.Healthy) != 1 || a.Events.Healthy[0] != "ok" {
+		t.Errorf("events.healthy = %v, want [ok]", a.Events.Healthy)
+	}
 }
 
-func TestCooldownStructured(t *testing.T) {
+func TestCooldownSimple(t *testing.T) {
 	yml := `
 alerts:
   - name: test
     healthcheck: file://test
     trigger:
       interval: 1m
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
+    cooldown: 10m
     template: "test"
     notify:
       - log
 `
 	cfg := loadFromString(t, yml)
-	cd := cfg.Alerts[0].Cooldown
-	if cd.Warning != "10m" {
-		t.Errorf("cooldown warning = %q, want %q", cd.Warning, "10m")
-	}
-	if cd.Critical != "1m" {
-		t.Errorf("cooldown critical = %q, want %q", cd.Critical, "1m")
-	}
-	if !cd.Recovery {
-		t.Error("cooldown recovery = false, want true")
-	}
-	if cd.Simple != "" {
-		t.Errorf("cooldown simple = %q, want empty", cd.Simple)
+	if cfg.Alerts[0].Cooldown != "10m" {
+		t.Errorf("cooldown = %q, want %q", cfg.Alerts[0].Cooldown, "10m")
 	}
 }
 
@@ -139,7 +134,7 @@ alerts:
 	}
 }
 
-func TestNotifyMixed(t *testing.T) {
+func TestNotifyStringAndObjectWithParams(t *testing.T) {
 	yml := `
 alerts:
   - name: test
@@ -149,10 +144,9 @@ alerts:
     template: "test"
     notify:
       - logfile
-      - service: telegram
-        template: "*bold*"
-        params:
-          parsemode: MarkdownV2
+      - telegram:
+          params:
+            notification: "false"
 `
 	cfg := loadFromString(t, yml)
 	notify := cfg.Alerts[0].Notify
@@ -163,18 +157,83 @@ alerts:
 	if notify[0].Service != "logfile" {
 		t.Errorf("notify[0] service = %q, want %q", notify[0].Service, "logfile")
 	}
-	if notify[0].Template != "" {
-		t.Errorf("notify[0] template = %q, want empty", notify[0].Template)
+	if len(notify[0].Params) != 0 {
+		t.Errorf("notify[0] params = %v, want empty", notify[0].Params)
 	}
 
 	if notify[1].Service != "telegram" {
 		t.Errorf("notify[1] service = %q, want %q", notify[1].Service, "telegram")
 	}
-	if notify[1].Template != "*bold*" {
-		t.Errorf("notify[1] template = %q, want %q", notify[1].Template, "*bold*")
+	if notify[1].Params["notification"] != "false" {
+		t.Errorf("notify[1] params = %v, want notification=false", notify[1].Params)
 	}
-	if notify[1].Params["parsemode"] != "MarkdownV2" {
-		t.Errorf("notify[1] params = %v, want parsemode=MarkdownV2", notify[1].Params)
+}
+
+func TestEventsConfig(t *testing.T) {
+	yml := `
+alerts:
+  - name: test
+    healthcheck: file://test
+    trigger:
+      interval: 1m
+    template: "default"
+    cooldown: 5m
+    notify:
+      - logger
+    events:
+      healthy: [ok]
+      on_unmatched: drop
+      override:
+        failure:
+          cooldown: 1m
+          notify:
+            - telegram:
+                params:
+                  notification: "false"
+            - logger
+        login:
+          template: "Login by {{event.user}}"
+          notify:
+            - telegram
+`
+	cfg := loadFromString(t, yml)
+	ev := cfg.Alerts[0].Events
+	if ev == nil {
+		t.Fatal("events is nil")
+	}
+	if len(ev.Healthy) != 1 || ev.Healthy[0] != "ok" {
+		t.Errorf("healthy = %v, want [ok]", ev.Healthy)
+	}
+	if ev.OnUnmatched != "drop" {
+		t.Errorf("on_unmatched = %q, want %q", ev.OnUnmatched, "drop")
+	}
+
+	failure, ok := ev.Override["failure"]
+	if !ok {
+		t.Fatal("missing override for failure")
+	}
+	if failure.Cooldown != "1m" {
+		t.Errorf("failure cooldown = %q, want %q", failure.Cooldown, "1m")
+	}
+	if len(failure.Notify) != 2 {
+		t.Fatalf("failure notify count = %d, want 2", len(failure.Notify))
+	}
+	if failure.Notify[0].Service != "telegram" {
+		t.Errorf("failure notify[0] service = %q, want %q", failure.Notify[0].Service, "telegram")
+	}
+	if failure.Notify[0].Params["notification"] != "false" {
+		t.Errorf("failure notify[0] params = %v, want notification=false", failure.Notify[0].Params)
+	}
+
+	login, ok := ev.Override["login"]
+	if !ok {
+		t.Fatal("missing override for login")
+	}
+	if login.Template != "Login by {{event.user}}" {
+		t.Errorf("login template = %q, want %q", login.Template, "Login by {{event.user}}")
+	}
+	if len(login.Notify) != 1 || login.Notify[0].Service != "telegram" {
+		t.Errorf("login notify = %v, want [telegram]", login.Notify)
 	}
 }
 
@@ -245,20 +304,6 @@ services:
       foo: bar
 `); err == nil {
 		t.Fatal("expected error for service missing url")
-	}
-}
-
-func TestValidation_NotifyTargetMissingService(t *testing.T) {
-	if err := loadErr(t, `
-alerts:
-  - name: test
-    healthcheck: file://test
-    template: "test"
-    notify:
-      - service: ""
-        template: "override"
-`); err == nil {
-		t.Fatal("expected error for notify target with empty service")
 	}
 }
 

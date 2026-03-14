@@ -81,10 +81,10 @@ func (s *Scheduler) fireLifecycle(ctx context.Context, alerts []config.Alert, ev
 }
 
 func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRun bool) {
-	cd := buildCooldownState(alert.Cooldown)
+	opts := buildRunOpts(alert, dryRun)
 
 	fire := func() {
-		for result := range s.runner.RunAlert(ctx, alert, dryRun, cd, nil) {
+		for result := range s.runner.RunAlertOpts(ctx, alert, opts) {
 			if s.onResult != nil {
 				s.onResult(result)
 			}
@@ -112,9 +112,9 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 	case alert.Trigger.Cron != "":
 		s.runCronLoop(ctx, alert.Name, alert.Trigger.Cron, fire)
 	case alert.Trigger.Watch != "":
-		s.runWatchLoop(ctx, alert, dryRun, cd)
+		s.runWatchLoop(ctx, alert, opts)
 	case alert.Trigger.Pipe != "":
-		s.runPipeLoop(ctx, alert, dryRun, cd)
+		s.runPipeLoop(ctx, alert, opts)
 	default:
 		s.logger.Warn("skipping: no trigger configured", "alert", alert.Name)
 	}
@@ -134,26 +134,13 @@ func (s *Scheduler) runCronLoop(ctx context.Context, alertName, expr string, fir
 	cr.Stop()
 }
 
-func buildCooldownState(cd config.Cooldown) *cooldown.State {
-	w := parseCooldownValue(effectiveCooldownValue(cd.Warning, cd.Simple))
-	c := parseCooldownValue(effectiveCooldownValue(cd.Critical, cd.Simple))
-	if w == 0 && c == 0 {
-		return nil
+func buildRunOpts(alert *config.Alert, dryRun bool) runner.RunOpts {
+	opts := runner.RunOpts{
+		DryRun:   dryRun,
+		Cooldown: cooldown.New(nil),
 	}
-	return cooldown.New(w, c, cd.Recovery, nil)
-}
-
-func effectiveCooldownValue(specific, simple string) string {
-	if specific != "" {
-		return specific
+	if alert.Events != nil && len(alert.Events.Healthy) > 0 {
+		opts.State = &runner.AlertState{Healthy: true}
 	}
-	return simple
-}
-
-func parseCooldownValue(s string) time.Duration {
-	if s == "inf" {
-		return cooldown.Infinite
-	}
-	d, _ := time.ParseDuration(s)
-	return d
+	return opts
 }

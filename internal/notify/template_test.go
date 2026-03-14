@@ -6,46 +6,23 @@ import (
 
 func TestRender_Basic(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
-		map[string]string{"status": "warning", "usage": "84"},
+		map[string]string{"type": "high_usage", "usage": "84"},
 		nil,
 		map[string]any{"mount": "/"},
 	)
 
-	result, err := Render(`{{healthcheck.status | upper}} {{globals.hostname}}: Disk at {{healthcheck.usage}}%`, data)
+	result, err := Render(`{{event.type | upper}} {{globals.hostname}}: Disk at {{event.usage}}%`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result != "WARNING vps-01: Disk at 84%" {
-		t.Errorf("result = %q, want %q", result, "WARNING vps-01: Disk at 84%")
-	}
-}
-
-func TestRender_StatusEmoji(t *testing.T) {
-	tests := []struct {
-		status string
-		emoji  string
-	}{
-		{"ok", "\U0001f7e2"},
-		{"warning", "\U0001f7e1"},
-		{"critical", "\U0001f534"},
-		{"unknown", "\u2753"},
-	}
-	for _, tt := range tests {
-		data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-			map[string]string{"status": tt.status}, nil, nil)
-		result, err := Render(`{{healthcheck.status_emoji}}`, data)
-		if err != nil {
-			t.Fatalf("unexpected error for %s: %v", tt.status, err)
-		}
-		if result != tt.emoji {
-			t.Errorf("status=%s: emoji = %q, want %q", tt.status, result, tt.emoji)
-		}
+	if result != "HIGH_USAGE vps-01: Disk at 84%" {
+		t.Errorf("result = %q, want %q", result, "HIGH_USAGE vps-01: Disk at 84%")
 	}
 }
 
 func TestRender_ArgsAccess(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"},
+		map[string]string{"type": "ok"},
 		nil,
 		map[string]any{"mount": "/data", "threshold": 0.8},
 	)
@@ -61,7 +38,7 @@ func TestRender_ArgsAccess(t *testing.T) {
 
 func TestRender_AlertName(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "my_alert",
-		map[string]string{"status": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil, nil)
 
 	result, err := Render(`alert={{alert.name}}`, data)
 	if err != nil {
@@ -74,9 +51,9 @@ func TestRender_AlertName(t *testing.T) {
 
 func TestRender_SprigFunctions(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok", "msg": "hello"}, nil, nil)
+		map[string]string{"type": "ok", "msg": "hello"}, nil, nil)
 
-	result, err := Render(`{{healthcheck.msg | upper | repeat 2}}`, data)
+	result, err := Render(`{{event.msg | upper | repeat 2}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -87,9 +64,9 @@ func TestRender_SprigFunctions(t *testing.T) {
 
 func TestRender_InvalidTemplate(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil, nil)
 
-	_, err := Render(`{{healthcheck.status | nonexistent}}`, data)
+	_, err := Render(`{{event.type | nonexistent}}`, data)
 	if err == nil {
 		t.Fatal("expected error for invalid template function")
 	}
@@ -97,7 +74,7 @@ func TestRender_InvalidTemplate(t *testing.T) {
 
 func TestBuildTemplateData_NilArgs(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil, nil)
 
 	if data.Args == nil {
 		t.Error("Args should be non-nil empty map")
@@ -106,7 +83,7 @@ func TestBuildTemplateData_NilArgs(t *testing.T) {
 
 func TestRender_DefaultSprigFunc(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"status": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil, nil)
 
 	result, err := Render(`{{args.mount | default "/"}}`, data)
 	if err != nil {
@@ -122,9 +99,9 @@ func TestRender_ArrayJoin(t *testing.T) {
 		"hosts": []string{"1.2.3.4", "5.6.7.8"},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.hosts | arrayJoin ", "}}`, data)
+	result, err := Render(`{{event.hosts | arrayJoin ", "}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -138,9 +115,9 @@ func TestRender_ArrayMax(t *testing.T) {
 		"counts": []int64{3, 1, 4, 1, 5, 9},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.counts | arrayMax}}`, data)
+	result, err := Render(`{{event.counts | arrayMax}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,9 +131,9 @@ func TestRender_ArrayMin(t *testing.T) {
 		"counts": []int64{3, 1, 4, 1, 5, 9},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.counts | arrayMin}}`, data)
+	result, err := Render(`{{event.counts | arrayMin}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -170,9 +147,9 @@ func TestRender_ArraySum(t *testing.T) {
 		"counts": []int64{1, 2, 3},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.counts | arraySum}}`, data)
+	result, err := Render(`{{event.counts | arraySum}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -186,9 +163,9 @@ func TestRender_ArrayFirst(t *testing.T) {
 		"hosts": []string{"first.host", "second.host"},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.hosts | arrayFirst}}`, data)
+	result, err := Render(`{{event.hosts | arrayFirst}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -202,9 +179,9 @@ func TestRender_ArrayLast(t *testing.T) {
 		"hosts": []string{"first.host", "last.host"},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.hosts | arrayLast}}`, data)
+	result, err := Render(`{{event.hosts | arrayLast}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -218,9 +195,9 @@ func TestRender_ArrayContains_True(t *testing.T) {
 		"hosts": []string{"1.2.3.4", "5.6.7.8"},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{if healthcheck.hosts | arrayContains "1.2.3.4"}}yes{{else}}no{{end}}`, data)
+	result, err := Render(`{{if event.hosts | arrayContains "1.2.3.4"}}yes{{else}}no{{end}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -234,9 +211,9 @@ func TestRender_ArrayContains_False(t *testing.T) {
 		"hosts": []string{"1.2.3.4", "5.6.7.8"},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{if healthcheck.hosts | arrayContains "9.9.9.9"}}yes{{else}}no{{end}}`, data)
+	result, err := Render(`{{if event.hosts | arrayContains "9.9.9.9"}}yes{{else}}no{{end}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -250,9 +227,9 @@ func TestRender_ArrayJoin_IntArray(t *testing.T) {
 		"counts": []int64{1, 2, 3},
 	}
 	data := BuildTemplateData(map[string]any{}, "alert",
-		map[string]string{"status": "ok"}, arrays, nil)
+		map[string]string{"type": "ok"}, arrays, nil)
 
-	result, err := Render(`{{healthcheck.counts | arrayJoin "-"}}`, data)
+	result, err := Render(`{{event.counts | arrayJoin "-"}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

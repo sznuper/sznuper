@@ -20,7 +20,7 @@ func writeScript(t *testing.T, dir, content string) {
 
 func TestRunAlert_EndToEnd(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=warning\necho usage=84\n")
+	writeScript(t, dir, "#!/bin/sh\necho '--- event'\necho type=high_usage\necho usage=84\n")
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -32,7 +32,7 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 			{
 				Name:        "test_alert",
 				Healthcheck: "file://check.sh",
-				Template:    `{{healthcheck.status | upper}} {{globals.hostname}}: usage={{healthcheck.usage}}%`,
+				Template:    `{{event.type | upper}} {{globals.hostname}}: usage={{event.usage}}%`,
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
 		},
@@ -45,14 +45,14 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("unexpected error at stage %q: %v", result.ErrStage, result.Err)
 	}
-	if result.Status != "warning" {
-		t.Errorf("status = %q, want %q", result.Status, "warning")
+	if result.EventType != "high_usage" {
+		t.Errorf("event_type = %q, want %q", result.EventType, "high_usage")
 	}
 	if result.Fields["usage"] != "84" {
 		t.Errorf("usage = %q, want %q", result.Fields["usage"], "84")
 	}
-	if result.Rendered["logger"] != "WARNING test-host: usage=84%" {
-		t.Errorf("rendered = %q, want %q", result.Rendered["logger"], "WARNING test-host: usage=84%")
+	if result.Rendered["logger"] != "HIGH_USAGE test-host: usage=84%" {
+		t.Errorf("rendered = %q, want %q", result.Rendered["logger"], "HIGH_USAGE test-host: usage=84%")
 	}
 	if len(result.Notified) != 1 || result.Notified[0] != "logger" {
 		t.Errorf("notified = %v, want [logger]", result.Notified)
@@ -85,7 +85,7 @@ func TestRunAlert_ResolveFails(t *testing.T) {
 
 func TestRunAlert_ParseFails(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho no_status_key=here\n")
+	writeScript(t, dir, "#!/bin/sh\necho '--- event'\necho no_type_key=here\n")
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
@@ -104,6 +104,39 @@ func TestRunAlert_ParseFails(t *testing.T) {
 	}
 	if result.ErrStage != "parse" {
 		t.Errorf("err_stage = %q, want %q", result.ErrStage, "parse")
+	}
+}
+
+func TestRunAlert_EmptyOutput(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir, "#!/bin/sh\n# no output\n")
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{"hostname": "host"},
+		Services: map[string]config.Service{
+			"logger": {URL: "logger://"},
+		},
+		Alerts: []config.Alert{
+			{
+				Name:        "empty",
+				Healthcheck: "file://check.sh",
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
+			},
+		},
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	r := New(cfg, logger)
+
+	var results []Result
+	for res := range r.RunAlert(context.Background(), &cfg.Alerts[0], true, nil, nil) {
+		results = append(results, res)
+	}
+	// Zero events = zero results
+	if len(results) != 0 {
+		t.Errorf("results = %d, want 0", len(results))
 	}
 }
 
@@ -128,7 +161,7 @@ func TestFindAlert(t *testing.T) {
 
 func TestRunAll(t *testing.T) {
 	dir := t.TempDir()
-	writeScript(t, dir, "#!/bin/sh\necho status=ok\n")
+	writeScript(t, dir, "#!/bin/sh\necho '--- event'\necho type=ok\n")
 
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},

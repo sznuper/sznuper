@@ -80,10 +80,10 @@ func printResult(r runner.Result) {
 			fmt.Printf("    %s\n", e)
 		}
 	}
-	if len(r.Output) > 0 {
-		fmt.Println("  Output:")
-		for _, line := range r.Output {
-			fmt.Printf("    %s\n", line)
+	if len(r.Fields) > 0 {
+		fmt.Println("  Fields:")
+		for k, v := range r.Fields {
+			fmt.Printf("    %s=%s\n", k, v)
 		}
 	}
 

@@ -35,9 +35,10 @@ type Alert struct {
 	Trigger     Trigger        `yaml:"trigger"`
 	Timeout     string         `yaml:"timeout,omitempty"`
 	Args        map[string]any `yaml:"args,omitempty"`
-	Cooldown    Cooldown       `yaml:"cooldown,omitempty"`
 	Template    string         `yaml:"template"    validate:"required"`
+	Cooldown    string         `yaml:"cooldown,omitempty"`
 	Notify      []NotifyTarget `yaml:"notify"      validate:"required,dive"`
+	Events      *Events        `yaml:"events,omitempty"`
 }
 
 type Trigger struct {
@@ -82,79 +83,67 @@ func (s *SHA256) UnmarshalYAML(unmarshal func(any) error) error {
 	return nil
 }
 
-// Cooldown handles a simple duration string or per-status object.
-type Cooldown struct {
-	Simple   string
-	Warning  string
-	Critical string
-	Recovery bool
+// Events configures per-event-type handling for an alert.
+type Events struct {
+	Healthy     []string                 `yaml:"healthy,omitempty"`
+	OnUnmatched string                   `yaml:"on_unmatched,omitempty"`
+	Override    map[string]EventOverride `yaml:"override,omitempty"`
 }
 
-func (c Cooldown) MarshalYAML() (any, error) {
-	if c.Simple != "" {
-		return c.Simple, nil
-	}
-	if c.Warning != "" || c.Critical != "" || c.Recovery {
-		return cooldownObj{
-			Warning:  c.Warning,
-			Critical: c.Critical,
-			Recovery: c.Recovery,
-		}, nil
-	}
-	return nil, nil
+// EventOverride provides per-event-type overrides for template, cooldown, and notify.
+type EventOverride struct {
+	Template string         `yaml:"template,omitempty"`
+	Cooldown string         `yaml:"cooldown,omitempty"`
+	Notify   []NotifyTarget `yaml:"notify,omitempty"`
 }
 
-func (c *Cooldown) UnmarshalYAML(unmarshal func(any) error) error {
-	var str string
-	if err := unmarshal(&str); err == nil {
-		c.Simple = str
-		return nil
-	}
-
-	var obj cooldownObj
-	if err := unmarshal(&obj); err != nil {
-		return fmt.Errorf("cooldown: must be a duration string or an object with warning/critical/recovery")
-	}
-	c.Warning = obj.Warning
-	c.Critical = obj.Critical
-	c.Recovery = obj.Recovery
-	return nil
-}
-
-type cooldownObj struct {
-	Warning  string `yaml:"warning"`
-	Critical string `yaml:"critical"`
-	Recovery bool   `yaml:"recovery"`
-}
-
-// NotifyTarget handles a plain service name string or an object with overrides.
+// NotifyTarget handles a plain service name string or a service object with params.
+//
+// YAML formats:
+//
+//	- telegram                    (plain string)
+//	- telegram:                   (map with service name as key)
+//	    params:
+//	      notification: "false"
 type NotifyTarget struct {
-	Service  string            `yaml:"service"  validate:"required"`
-	Template string            `yaml:"template"`
-	Params   map[string]string `yaml:"params"`
+	Service string            `yaml:"-" validate:"required"`
+	Params  map[string]string `yaml:"params,omitempty"`
 }
 
 func (n NotifyTarget) MarshalYAML() (any, error) {
-	if n.Template == "" && len(n.Params) == 0 {
+	if len(n.Params) == 0 {
 		return n.Service, nil
 	}
-	type notifyAlias NotifyTarget
-	return notifyAlias(n), nil
+	type paramsOnly struct {
+		Params map[string]string `yaml:"params"`
+	}
+	return map[string]any{
+		n.Service: paramsOnly{Params: n.Params},
+	}, nil
 }
 
 func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
+	// Try plain string: "telegram"
 	var str string
 	if err := unmarshal(&str); err == nil {
 		n.Service = str
 		return nil
 	}
 
-	type notifyAlias NotifyTarget
-	var obj notifyAlias
-	if err := unmarshal(&obj); err != nil {
-		return fmt.Errorf("notify: must be a service name string or an object with service/template/params")
+	// Try map: { telegram: { params: { ... } } }
+	var obj map[string]struct {
+		Params map[string]string `yaml:"params"`
 	}
-	*n = NotifyTarget(obj)
+	if err := unmarshal(&obj); err != nil {
+		return fmt.Errorf("notify: must be a service name string or a service object")
+	}
+	if len(obj) != 1 {
+		return fmt.Errorf("notify: service object must have exactly one key")
+	}
+	for name, cfg := range obj {
+		n.Service = name
+		n.Params = cfg.Params
+	}
 	return nil
 }
 

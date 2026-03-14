@@ -23,8 +23,9 @@ alerts:
       threshold_warn_percent: 2
       threshold_crit_percent: 90
     template: |-
-      [{{healthcheck.status | upper}}] {{globals.hostname}} {{healthcheck.used}}:
-      Disk at {{healthcheck.usage_percent}}%
+      [{{event.type | upper}}] {{globals.hostname}}:
+      Disk at {{event.usage_percent}}%
     notify:
       - telegram
-
+    events:
+      healthy: [ok]

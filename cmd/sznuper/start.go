@@ -52,7 +52,7 @@ func init() {
 func logResult(logger *slog.Logger, res runner.Result) {
 	attrs := []any{
 		"alert", res.AlertName,
-		"status", res.Status,
+		"event_type", res.EventType,
 		"duration", res.Duration,
 	}
 	switch {

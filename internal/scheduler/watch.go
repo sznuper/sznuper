@@ -8,11 +8,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/sznuper/sznuper/internal/config"
-	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
-func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) {
+func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, opts runner.RunOpts) {
 	path := alert.Trigger.Watch
 	base := filepath.Base(path)
 	dir := filepath.Dir(path)
@@ -43,7 +42,9 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, dryRu
 		input := make([]byte, len(buf))
 		copy(input, buf)
 		buf = buf[:0]
-		resultCh = s.runner.RunAlert(ctx, alert, dryRun, cd, input)
+		callOpts := opts
+		callOpts.Stdin = input
+		resultCh = s.runner.RunAlertOpts(ctx, alert, callOpts)
 	}
 
 	for {

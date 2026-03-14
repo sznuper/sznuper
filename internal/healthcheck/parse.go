@@ -6,130 +6,68 @@ import (
 	"strings"
 )
 
-// ParsedOutput holds the parsed key-value output from a healthcheck.
-type ParsedOutput struct {
-	Status string
+// Event holds a single parsed event from healthcheck output.
+type Event struct {
+	Type   string
 	Fields map[string]string
 	Arrays map[string]any // typed slices: []string, []int64, or []bool
-	Lines  []string
 }
 
-// MultiOutput holds the result of ParseMulti.
-// GlobalFields/GlobalArrays are shared context emitted before "--- records".
-// Records holds one ParsedOutput per "--- record" block.
-// For single-record output (no separators), Global is empty and Records has one entry.
-type MultiOutput struct {
-	GlobalFields map[string]string
-	GlobalArrays map[string]any
-	Records      []*ParsedOutput
-}
-
-// Parse parses KEY=VALUE lines from healthcheck stdout.
-// Lines without '=' are ignored. The "status" key is required.
-// Values of the form [...] are parsed as typed arrays and stored in Arrays.
-func Parse(stdout string) (*ParsedOutput, error) {
-	out := &ParsedOutput{
-		Fields: make(map[string]string),
-		Arrays: make(map[string]any),
-	}
-	out.Lines = parseKeyValues(stdout, out.Fields, out.Arrays)
-
-	status, ok := out.Fields["status"]
-	if !ok {
-		return nil, fmt.Errorf("healthcheck output missing required 'status' key")
-	}
-	out.Status = status
-
-	return out, nil
-}
-
-// ParseMulti parses healthcheck stdout supporting the multi-record format.
+// ParseEvents parses healthcheck stdout into a list of events.
 //
-// Structural tokens (exact line match after trimming):
-//
-//	"--- records" — ends the global props section, starts the records array
-//	"--- record"  — starts the next record within the array
-//
-// Rules:
-//   - No separators: single-record output. Equivalent to Parse; Records has one entry.
-//   - "--- records" present: everything before it is global props; everything after
-//     is records split by "--- record".
-func ParseMulti(stdout string) (*MultiOutput, error) {
-	const tokRecords = "--- records"
-	const tokRecord = "--- record"
+// Each event block starts with "--- event" on its own line, followed by
+// key=value pairs. The "type" field is required in every event.
+// Lines before the first "--- event" are ignored.
+// Empty output (no "--- event" markers) returns zero events.
+func ParseEvents(stdout string) ([]Event, error) {
+	const tok = "--- event"
 
 	lines := strings.Split(stdout, "\n")
 
-	hasRecords := false
-	for _, l := range lines {
-		if strings.TrimSpace(l) == tokRecords {
-			hasRecords = true
-			break
-		}
-	}
-
-	if !hasRecords {
-		parsed, err := Parse(stdout)
-		if err != nil {
-			return nil, err
-		}
-		return &MultiOutput{
-			GlobalFields: make(map[string]string),
-			GlobalArrays: make(map[string]any),
-			Records:      []*ParsedOutput{parsed},
-		}, nil
-	}
-
-	out := &MultiOutput{
-		GlobalFields: make(map[string]string),
-		GlobalArrays: make(map[string]any),
-	}
-
-	var globalLines []string
-	var recordBlocks [][]string
+	// Split into event blocks.
+	var blocks [][]string
 	var cur []string
-	inRecords := false
+	inEvent := false
 
 	for _, l := range lines {
-		trimmed := strings.TrimSpace(l)
-		switch trimmed {
-		case tokRecords:
-			inRecords = true
+		if strings.TrimSpace(l) == tok {
+			if inEvent {
+				blocks = append(blocks, cur)
+			}
 			cur = nil
-		case tokRecord:
-			if inRecords {
-				recordBlocks = append(recordBlocks, cur)
-				cur = nil
-			}
-		default:
-			if inRecords {
-				cur = append(cur, l)
-			} else {
-				globalLines = append(globalLines, l)
-			}
+			inEvent = true
+			continue
+		}
+		if inEvent {
+			cur = append(cur, l)
 		}
 	}
-	if inRecords {
-		recordBlocks = append(recordBlocks, cur)
+	if inEvent {
+		blocks = append(blocks, cur)
 	}
 
-	parseKeyValues(strings.Join(globalLines, "\n"), out.GlobalFields, out.GlobalArrays)
-
-	for i, block := range recordBlocks {
-		parsed, err := Parse(strings.Join(block, "\n"))
-		if err != nil {
-			return nil, fmt.Errorf("record %d: %w", i, err)
+	events := make([]Event, 0, len(blocks))
+	for i, block := range blocks {
+		ev := Event{
+			Fields: make(map[string]string),
+			Arrays: make(map[string]any),
 		}
-		out.Records = append(out.Records, parsed)
+		parseKeyValues(strings.Join(block, "\n"), ev.Fields, ev.Arrays)
+
+		typ, ok := ev.Fields["type"]
+		if !ok {
+			return nil, fmt.Errorf("event %d: missing required 'type' field", i)
+		}
+		ev.Type = typ
+
+		events = append(events, ev)
 	}
 
-	return out, nil
+	return events, nil
 }
 
 // parseKeyValues parses KEY=VALUE lines into fields and arrays.
-// Returns the ordered Lines slice of "key=value" strings.
-func parseKeyValues(text string, fields map[string]string, arrays map[string]any) []string {
-	var lines []string
+func parseKeyValues(text string, fields map[string]string, arrays map[string]any) {
 	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -147,15 +85,12 @@ func parseKeyValues(text string, fields map[string]string, arrays map[string]any
 			continue
 		}
 
-		lines = append(lines, key+"="+value)
-
 		if len(value) >= 2 && value[0] == '[' && value[len(value)-1] == ']' {
 			arrays[key] = parseArrayValue(value)
 		} else {
 			fields[key] = value
 		}
 	}
-	return lines
 }
 
 func parseArrayValue(raw string) any {

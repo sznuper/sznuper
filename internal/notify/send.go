@@ -16,15 +16,20 @@ type Target struct {
 	Params      map[string]string
 }
 
-// ResolveTargets builds the list of notification targets from an alert's
-// notify list, service definitions, and template data. It renders the message
-// template and option value templates for each target.
+// ResolveTargets builds the list of notification targets from a notify list,
+// service definitions, and template data. It renders the message template
+// for each target.
 func ResolveTargets(
 	notifyList []NotifyRef,
 	services map[string]ServiceDef,
-	defaultTemplate string,
+	tmplStr string,
 	data TemplateData,
 ) ([]Target, error) {
+	msg, err := Render(tmplStr, data)
+	if err != nil {
+		return nil, fmt.Errorf("rendering template: %w", err)
+	}
+
 	var targets []Target
 
 	for _, ref := range notifyList {
@@ -33,18 +38,7 @@ func ResolveTargets(
 			return nil, fmt.Errorf("unknown service %q", ref.ServiceName)
 		}
 
-		// Pick template: per-target override → alert default.
-		tmplStr := defaultTemplate
-		if ref.Template != "" {
-			tmplStr = ref.Template
-		}
-
-		msg, err := Render(tmplStr, data)
-		if err != nil {
-			return nil, fmt.Errorf("rendering template for %s: %w", ref.ServiceName, err)
-		}
-
-		// Merge params: service base ← per-target override.
+		// Merge params: service base <- per-target override.
 		merged := make(map[string]string)
 		for k, v := range svc.Params {
 			merged[k] = v
@@ -135,7 +129,6 @@ func applyParams(rawURL string, params map[string]string) (string, error) {
 // NotifyRef is a simplified notify target reference used by ResolveTargets.
 type NotifyRef struct {
 	ServiceName string
-	Template    string
 	Params      map[string]string
 }
 

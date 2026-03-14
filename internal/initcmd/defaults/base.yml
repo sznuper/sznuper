@@ -8,7 +8,7 @@ alerts:
     trigger:
       lifecycle: true
     template: |-
-      [{{healthcheck.event | upper}}] {{globals.hostname}}: sznuper {{healthcheck.event}}
+      [{{event.type | upper}}] {{globals.hostname}}: sznuper {{event.type}}
     notify:
       - logger
 
@@ -21,15 +21,14 @@ alerts:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
       mount: /
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
+    cooldown: 10m
     template: |-
-      [{{healthcheck.status | upper}}] {{globals.hostname}}:
-      Disk {{args.mount}} at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+      [{{event.type | upper}}] {{globals.hostname}}:
+      Disk {{args.mount}} at {{event.usage_percent}}% ({{event.available}} remaining)
     notify:
       - logger
+    events:
+      healthy: [ok]
 
   - name: memory_usage
     healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/memory_usage
@@ -39,15 +38,14 @@ alerts:
     args:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
+    cooldown: 10m
     template: |-
-      [{{healthcheck.status | upper}}] {{globals.hostname}}:
-      Memory at {{healthcheck.usage_percent}}% ({{healthcheck.available}} remaining)
+      [{{event.type | upper}}] {{globals.hostname}}:
+      Memory at {{event.usage_percent}}% ({{event.available}} remaining)
     notify:
       - logger
+    events:
+      healthy: [ok]
 
   - name: cpu_usage
     healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.9.0/cpu_usage
@@ -57,12 +55,11 @@ alerts:
     args:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
+    cooldown: 10m
     template: |-
-      [{{healthcheck.status | upper}}] {{globals.hostname}}:
-      CPU at {{healthcheck.usage_percent}}%
+      [{{event.type | upper}}] {{globals.hostname}}:
+      CPU at {{event.usage_percent}}%
     notify:
       - logger
+    events:
+      healthy: [ok]

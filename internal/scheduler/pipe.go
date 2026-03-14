@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/sznuper/sznuper/internal/config"
-	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
-func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) {
+func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, opts runner.RunOpts) {
 	for {
-		err := s.runPipeOnce(ctx, alert, dryRun, cd)
+		err := s.runPipeOnce(ctx, alert, opts)
 		if ctx.Err() != nil {
 			return
 		}
@@ -26,7 +25,7 @@ func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, dryRun
 	}
 }
 
-func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State) error {
+func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, opts runner.RunOpts) error {
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", alert.Trigger.Pipe)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -60,7 +59,9 @@ func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, dryRun
 		input := make([]byte, len(buf))
 		copy(input, buf)
 		buf = buf[:0]
-		resultCh = s.runner.RunAlert(ctx, alert, dryRun, cd, input)
+		callOpts := opts
+		callOpts.Stdin = input
+		resultCh = s.runner.RunAlertOpts(ctx, alert, callOpts)
 	}
 
 	for {

@@ -12,7 +12,7 @@ import (
 	"github.com/sznuper/sznuper/internal/notify"
 )
 
-// Runner orchestrates the healthcheck → parse → template → notify pipeline.
+// Runner orchestrates the healthcheck -> parse -> template -> notify pipeline.
 type Runner struct {
 	cfg    *config.Config
 	logger *slog.Logger
@@ -54,20 +54,23 @@ func (r *Runner) RunAll(ctx context.Context, dryRun bool) <-chan Result {
 	return out
 }
 
-// RunOpts holds optional parameters for RunAlert.
+// AlertState tracks the healthy/unhealthy binary state for an alert.
+// Used only when events.healthy is configured.
+type AlertState struct {
+	Healthy bool
+}
+
+// RunOpts holds optional parameters for RunAlertOpts.
 type RunOpts struct {
 	DryRun        bool
 	Cooldown      *cooldown.State
+	State         *AlertState       // state machine (nil = no state tracking)
 	Stdin         []byte
 	BuiltinParams map[string]string // params for builtin:// healthchecks
 }
 
 // RunAlert executes a single alert through the full pipeline asynchronously.
-// It returns a channel that yields one Result per healthcheck record, then closes.
-// Single-record healthchecks yield exactly one result (same as before).
-// Multi-record healthchecks (using "--- records" / "--- record" separators) yield one result per record.
-// Pass a non-nil cd to enforce cooldown; nil preserves the original behaviour (ok skips notify).
-// Pass non-nil stdin to pipe bytes to the healthcheck process via stdin.
+// It returns a channel that yields one Result per event, then closes.
 func (r *Runner) RunAlert(ctx context.Context, alert *config.Alert, dryRun bool, cd *cooldown.State, stdin []byte) <-chan Result {
 	return r.RunAlertOpts(ctx, alert, RunOpts{DryRun: dryRun, Cooldown: cd, Stdin: stdin})
 }
@@ -87,7 +90,6 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 	start := time.Now()
 
 	dryRun := opts.DryRun
-	cd := opts.Cooldown
 
 	base := Result{
 		AlertName:      alert.Name,
@@ -147,9 +149,9 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 	base.Env = execResult.Env
 	log.Debug("healthcheck executed", "exit_code", execResult.ExitCode, "duration", execResult.Duration, "stderr", execResult.Stderr)
 
-	// Stage 3: Parse output (multi-record aware).
+	// Stage 3: Parse events.
 	log.Info("parsing output")
-	multi, err := healthcheck.ParseMulti(execResult.Stdout)
+	events, err := healthcheck.ParseEvents(execResult.Stdout)
 	if err != nil {
 		base.Err = err
 		base.ErrStage = "parse"
@@ -157,33 +159,106 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		sendErr(base)
 		return
 	}
-	log.Debug("output parsed", "records", len(multi.Records))
+	log.Debug("output parsed", "events", len(events))
 
-	refs := mapNotifyRefs(alert.Notify)
 	svcs := mapServiceDefs(r.cfg.Services)
 
-	// Stages 4-5: Per-record template + notify.
-	for _, record := range multi.Records {
+	// Stage 4: Process each event.
+	for _, ev := range events {
 		result := base
-		result.Status = record.Status
-		result.Output = record.Lines
-		result.Fields = record.Fields
-		result.Arrays = record.Arrays
+		result.EventType = ev.Type
+		result.Fields = ev.Fields
+		result.Arrays = ev.Arrays
 
-		// Global fields are base; record fields override on collision.
-		mergedFields := mergeFields(multi.GlobalFields, record.Fields)
-		mergedArrays := mergeArrays(multi.GlobalArrays, record.Arrays)
+		// a. Resolve config: find matching override or apply on_unmatched rule.
+		var override *config.EventOverride
+		if alert.Events != nil {
+			if o, ok := alert.Events.Override[ev.Type]; ok {
+				override = &o
+			}
+		}
 
-		log.Info("rendering templates", "status", record.Status)
+		dropped := override == nil && alert.Events != nil && alert.Events.OnUnmatched == "drop"
+
+		// b. State machine.
+		skipNotify := false
+		if opts.State != nil {
+			isHealthyEv := isHealthyEvent(alert, ev.Type)
+			if isHealthyEv {
+				if opts.State.Healthy {
+					// healthy -> healthy: no notification
+					log.Info("healthy event in healthy state, skipping", "type", ev.Type)
+					skipNotify = true
+				} else {
+					// unhealthy -> healthy: recovery
+					opts.State.Healthy = true
+					result.IsRecovery = true
+					if opts.Cooldown != nil {
+						opts.Cooldown.ResetAll()
+					}
+					log.Info("recovery transition", "type", ev.Type)
+					if dropped {
+						log.Info("recovery event dropped by on_unmatched", "type", ev.Type)
+						skipNotify = true
+					}
+				}
+			} else {
+				// unhealthy event
+				if opts.State.Healthy {
+					opts.State.Healthy = false
+					log.Info("unhealthy transition", "type", ev.Type)
+				}
+				if dropped {
+					log.Info("event dropped by on_unmatched", "type", ev.Type)
+					skipNotify = true
+				}
+			}
+		} else if dropped {
+			log.Info("event dropped by on_unmatched", "type", ev.Type)
+			skipNotify = true
+		}
+
+		if skipNotify {
+			result.Dropped = dropped
+			result.Duration = time.Since(start)
+			out <- result
+			continue
+		}
+
+		// c. Cooldown.
+		effectiveDuration := resolveEffectiveCooldown(alert, override)
+		if opts.Cooldown != nil {
+			if !opts.Cooldown.Check(ev.Type, effectiveDuration) {
+				log.Info("notification suppressed by cooldown", "type", ev.Type)
+				result.Suppressed = true
+				result.Duration = time.Since(start)
+				out <- result
+				continue
+			}
+		}
+
+		// d. Template.
+		effectiveTemplate := alert.Template
+		if override != nil && override.Template != "" {
+			effectiveTemplate = override.Template
+		}
+
+		log.Info("rendering templates", "type", ev.Type)
 		tmplData := notify.BuildTemplateData(
 			r.cfg.Globals,
 			alert.Name,
-			mergedFields,
-			mergedArrays,
+			ev.Fields,
+			ev.Arrays,
 			alert.Args,
 		)
 
-		targets, err := notify.ResolveTargets(refs, svcs, alert.Template, tmplData)
+		effectiveNotify := alert.Notify
+		if override != nil && len(override.Notify) > 0 {
+			effectiveNotify = override.Notify
+		}
+		refs := mapNotifyRefs(effectiveNotify)
+
+		targets, err := notify.ResolveTargets(refs, svcs, effectiveTemplate, tmplData)
 		if err != nil {
 			result.Err = err
 			result.ErrStage = "template"
@@ -198,25 +273,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		}
 		log.Debug("templates rendered", "targets", len(targets))
 
-		if cd != nil {
-			shouldNotify, isRecovery := cd.Check(record.Status)
-			result.Suppressed = !shouldNotify
-			result.IsRecovery = isRecovery
-			if !shouldNotify {
-				log.Info("notification suppressed by cooldown", "status", record.Status)
-				result.Duration = time.Since(start)
-				out <- result
-				continue
-			}
-		} else {
-			if record.Status == "ok" {
-				log.Info("status ok, skipping notifications")
-				result.Duration = time.Since(start)
-				out <- result
-				continue
-			}
-		}
-
+		// e. Notify.
 		for _, t := range targets {
 			if dryRun {
 				if err := notify.Validate(t); err != nil {
@@ -244,31 +301,43 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		}
 
 		result.Duration = time.Since(start)
-		log.Info("alert completed", "status", result.Status, "duration", result.Duration)
+		log.Info("event processed", "type", result.EventType, "duration", result.Duration)
 		out <- result
 	}
 }
 
-func mergeFields(global, record map[string]string) map[string]string {
-	merged := make(map[string]string, len(global)+len(record))
-	for k, v := range global {
-		merged[k] = v
+// isHealthyEvent returns true if the event type is in the alert's healthy list.
+func isHealthyEvent(alert *config.Alert, eventType string) bool {
+	if alert.Events == nil {
+		return false
 	}
-	for k, v := range record {
-		merged[k] = v
+	for _, h := range alert.Events.Healthy {
+		if h == eventType {
+			return true
+		}
 	}
-	return merged
+	return false
 }
 
-func mergeArrays(global, record map[string]any) map[string]any {
-	merged := make(map[string]any, len(global)+len(record))
-	for k, v := range global {
-		merged[k] = v
+// resolveEffectiveCooldown returns the cooldown duration for an event type.
+// Override cooldown takes precedence over alert-level cooldown.
+func resolveEffectiveCooldown(alert *config.Alert, override *config.EventOverride) time.Duration {
+	cd := alert.Cooldown
+	if override != nil && override.Cooldown != "" {
+		cd = override.Cooldown
 	}
-	for k, v := range record {
-		merged[k] = v
+	return parseCooldownValue(cd)
+}
+
+func parseCooldownValue(s string) time.Duration {
+	if s == "" {
+		return 0
 	}
-	return merged
+	if s == "inf" {
+		return cooldown.Infinite
+	}
+	d, _ := time.ParseDuration(s)
+	return d
 }
 
 func detectTriggerType(t config.Trigger) string {
@@ -291,7 +360,6 @@ func mapNotifyRefs(targets []config.NotifyTarget) []notify.NotifyRef {
 	for i, t := range targets {
 		refs[i] = notify.NotifyRef{
 			ServiceName: t.Service,
-			Template:    t.Template,
 			Params:      t.Params,
 		}
 	}
