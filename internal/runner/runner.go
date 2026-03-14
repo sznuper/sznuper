@@ -64,7 +64,7 @@ type AlertState struct {
 type RunOpts struct {
 	DryRun        bool
 	Cooldown      *cooldown.State
-	State         *AlertState       // state machine (nil = no state tracking)
+	State         *AlertState // state machine (nil = no state tracking)
 	Stdin         []byte
 	BuiltinParams map[string]string // params for builtin:// healthchecks
 }

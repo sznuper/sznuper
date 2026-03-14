@@ -101,10 +101,10 @@ type EventOverride struct {
 //
 // YAML formats:
 //
-//	- telegram                    (plain string)
-//	- telegram:                   (map with service name as key)
-//	    params:
-//	      notification: "false"
+//   - telegram                    (plain string)
+//   - telegram:                   (map with service name as key)
+//     params:
+//     notification: "false"
 type NotifyTarget struct {
 	Service string            `yaml:"-" validate:"required"`
 	Params  map[string]string `yaml:"params,omitempty"`
