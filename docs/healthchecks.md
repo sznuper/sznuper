@@ -66,10 +66,8 @@ flowchart TD
     B -->|Yes| D{File is executable?}
     D -->|No| E[❌ Alert errors out\nLog: not executable]
     D -->|Yes| F[Run healthcheck with\nenv vars + stdin]
-    F --> G{status\nin output?}
-    G -->|Missing| H[⚠️ Log error\nHealthcheck is broken]
-    G -->|ok| I[No notification\nMaybe recovery]
-    G -->|warning/critical| J[Send notification\nto services]
+    F --> G[Parse events from output]
+    G --> H[Process each event through\nconfig resolution → state machine →\ncooldown → template → notify]
 ```
 
 #### 2. `file://` with sha256 string
@@ -92,10 +90,8 @@ flowchart TD
     F --> G{Hash matches config?}
     G -->|No| H[❌ Alert errors out\nLog: hash mismatch\nfile may have been tampered with]
     G -->|Yes| I[Run healthcheck with\nenv vars + stdin]
-    I --> J{status\nin output?}
-    J -->|Missing| K[⚠️ Log error\nHealthcheck is broken]
-    J -->|ok| L[No notification\nMaybe recovery]
-    J -->|warning/critical| M[Send notification\nto services]
+    I --> J[Parse events from output]
+    J --> K[Process each event through\nconfig resolution → state machine →\ncooldown → template → notify]
 ```
 
 #### 3. `https://` with sha256 string (pinned)
@@ -120,10 +116,8 @@ flowchart TD
     H -->|No| I[❌ Alert errors out\nLog: hash mismatch\nremote content may have changed]
     H -->|Yes| J[Save to options.cache_dir/a1b2c3d4e5f6...\nMark as executable]
     J --> F
-    F --> K{status\nin output?}
-    K -->|Missing| L[⚠️ Log error\nHealthcheck is broken]
-    K -->|ok| M[No notification\nMaybe recovery]
-    K -->|warning/critical| N[Send notification\nto services]
+    F --> K[Parse events from output]
+    K --> L[Process each event through\nconfig resolution → state machine →\ncooldown → template → notify]
 ```
 
 #### 4. `https://` with sha256: false (unpinned)
@@ -156,10 +150,8 @@ flowchart TD
     A[Alert triggered] --> B{Healthcheck available\nin session cache?}
     B -->|No| C[❌ Alert errors out\nLog: no healthcheck available]
     B -->|Yes| D[Run cached healthcheck with\nenv vars + stdin]
-    D --> E{status\nin output?}
-    E -->|Missing| F[⚠️ Log error\nHealthcheck is broken]
-    E -->|ok| G[No notification\nMaybe recovery]
-    E -->|warning/critical| H[Send notification\nto services]
+    D --> E[Parse events from output]
+    E --> F[Process each event through\nconfig resolution → state machine →\ncooldown → template → notify]
 ```
 
 **Phase 3: Daemon stops**
@@ -197,12 +189,12 @@ alerts:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
       mount: /
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
-    notify: [telegram]
+    cooldown: 10m
+    template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}%"
+    notify:
+      - telegram
+    events:
+      healthy: [ok]
 ```
 
 The user can also change the URI to `file://disk_usage` to use the local copy directly. Both work.
@@ -240,97 +232,52 @@ Arg keys are uppercased as-is when mapped to environment variables (e.g., `thres
 
 ### Output
 
-**Format:** `KEY=VALUE` pairs, one per line. Split on first `=` only. Lines without `=` are ignored.
+**Format:** A list of events. Each event starts with a `--- event` delimiter on its own line, followed by `KEY=VALUE` pairs (one per line). Split on first `=` only. Lines without `=` within an event block are ignored. Lines before the first `--- event` are ignored.
 
-**Reserved keys (HEALTHCHECK_ prefix):**
+**Required field:**
 
-| Key | Required | Values | Description |
-|---|---|---|---|
-| `status` | **yes** | `ok`, `warning`, `critical` | The healthcheck result. Drives notifications and cooldown. |
-
-If `status` is missing from output, the healthcheck is considered broken — logged as error, never triggers a notification.
-
-| `status` | Meaning | Notification? |
+| Key | Required | Description |
 |---|---|---|
-| `ok` | No problem | Only if recovery enabled |
-| `warning` | Problem, needs attention | Yes |
-| `critical` | Urgent problem | Yes |
-| (missing) | Healthcheck is broken | Log error, never notify |
+| `type` | **yes** | The event type name (e.g., `ok`, `high_usage`, `failure`, `login`). Drives config resolution, cooldown, and notification routing. |
 
-**Healthcheck-specific keys (no prefix, user-defined):**
+Empty output (no `--- event` markers) is valid — it's a list of zero events.
+
+**All other fields are arbitrary key-value pairs (the event payload):**
 
 ```
-status=warning
-usage=84
+--- event
+type=high_usage
+mount=/
+usage_percent=84.3
 available=8G
 ```
 
-### Multi-Record Output
-
-A healthcheck can emit multiple independent records from a single invocation. Each record is processed as a separate notification — its own status check, cooldown evaluation, and template render. This is designed for triggers like `pipe` where a single batch may contain several distinct events (e.g., 4 SSH failures and 7 logins in one journalctl flush).
-
-#### Structural tokens
-
-Two tokens control the format. They are matched as exact trimmed lines:
-
-| Token | Meaning |
-|---|---|
-| `--- records` | Ends the global props section; starts the records array |
-| `--- record` | Starts the next record within the array |
-
-#### Format
+**Multiple events** from a single invocation (e.g., pipe triggers processing a batch):
 
 ```
-event_count=11
-failure_count=4
-login_count=7
---- records
-status=warning
-event=failure
+--- event
+type=failure
 user=root
 host=14.18.190.138
---- record
-status=ok
-event=login
-user=root
-host=83.22.197.254
+timestamp=2026-03-14T01:06:00Z
+--- event
+type=login
+user=niar
+host=10.0.0.1
+timestamp=2026-03-14T01:08:00Z
 ```
 
-#### Parsing rules
+Each event is processed independently through the pipeline: config resolution → state machine → cooldown → template → notify.
 
-| Output shape | Result |
-|---|---|
-| No tokens | Single-record output — fully backward compatible with all existing healthchecks |
-| `--- records` only (no `--- record`) | Exactly one record; everything before `--- records` is global props |
-| `--- records` + one or more `--- record` | Global props + N records |
-
-#### Global props
-
-Everything before `--- records` is the global section:
-
-- Not a notification — context only, no `status` key.
-- Merged into every record's template data. Record fields win on collision.
-- Useful for batch-level counts (`event_count`, `failure_count`) that should be accessible in per-record templates.
-
-#### Records
-
-Each block between `--- records` / `--- record` tokens is an independent record:
-
-- **Requires** a `status` key (`ok`, `warning`, `critical`).
-- Fires independently through the notify → cooldown pipeline.
-- `status=ok` records skip notification (unless cooldown recovery is enabled).
+**Array values** are supported: `hosts=[1.2.3.4, 5.6.7.8]` (parsed as typed arrays).
 
 #### Template access
 
-Global and per-record fields are merged before template rendering:
+Event fields are available in templates as `{{event.*}}`:
 
 ```yaml
-template: |
-  SSH {{ healthcheck.event }}: {{ healthcheck.user }} from {{ healthcheck.host }}
-  (batch: {{ healthcheck.failure_count }} failures, {{ healthcheck.login_count }} logins)
+template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
 ```
-
-Here `failure_count` and `login_count` come from global props; `event`, `user`, `host` come from the per-record block. Both are available as `{{ healthcheck.* }}`.
 
 ---
 
@@ -354,7 +301,7 @@ The daemon treats all healthchecks identically. The distinction between bundled 
 
 ### Documenting Healthcheck Interfaces
 
-Each healthcheck (official or community) should document its arguments, outputs, and status logic. Example for the official `disk_usage` healthcheck:
+Each healthcheck (official or community) should document its arguments, outputs, and event type logic. Example for the official `disk_usage` healthcheck:
 
 ```
 disk_usage
@@ -364,18 +311,22 @@ Arguments (config → env):
   threshold_crit_percent  → HEALTHCHECK_ARG_THRESHOLD_CRIT_PERCENT  - critical threshold (0-100)
   mount                   → HEALTHCHECK_ARG_MOUNT                   - mount point to check
 
-Outputs:
-  status    - "ok", "warning", or "critical"
-  usage           - percentage as float (0-100)
-  available       - remaining space
+Event types:
+  ok             - usage below warning threshold
+  high_usage     - usage at or above warning threshold
+  critical_usage - usage at or above critical threshold
 
-Status logic:
-  usage >= HEALTHCHECK_ARG_THRESHOLD_CRIT → status=critical
-  usage >= HEALTHCHECK_ARG_THRESHOLD_WARN → status=warning
-  otherwise                           → status=ok
+Event fields:
+  usage_percent  - percentage as float (0-100)
+  available      - remaining space
+
+Event type logic:
+  usage >= HEALTHCHECK_ARG_THRESHOLD_CRIT → type=critical_usage
+  usage >= HEALTHCHECK_ARG_THRESHOLD_WARN → type=high_usage
+  otherwise                               → type=ok
 ```
 
-This tells the user exactly what to put in `args`, what `{{healthcheck.*}}` variables are available for templates, and what status values to expect for cooldown configuration.
+This tells the user exactly what to put in `args`, what `{{event.*}}` variables are available for templates, and what event types to expect for `events.override` configuration.
 
 ### Example: bundled healthchecks (Cosmopolitan C, single portable binary each)
 

@@ -74,36 +74,41 @@ Behavior:
 Example — real-time SSH failure detection via the systemd journal (works on any distro, including Debian 13+ without `auth.log`):
 
 ```yaml
-- name: ssh_failures
+- name: ssh_journal
   healthcheck: file://ssh_journal
   trigger:
     pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
-  args:
-    alert_on: failure
-    threshold_warn_count: 1
-    threshold_crit_count: 20
-  template: |
-    SSH {{ healthcheck.event }}: {{ healthcheck.user }} from {{ healthcheck.host }} at {{ healthcheck.timestamp }}
+  template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
+  cooldown: 5m
   notify:
     - telegram
+  events:
+    on_unmatched: drop
+    override:
+      failure:
+        cooldown: 1m
+      login: {}
 ```
 
 Advanced mode — pass additional journal fields through to the template:
 
 ```yaml
-- name: ssh_failures
+- name: ssh_journal
   healthcheck: file://ssh_journal
   trigger:
     pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
   args:
-    alert_on: failure
-    threshold_warn_count: 1
-    threshold_crit_count: 20
     advanced: true
-  template: |
-    SSH {{ healthcheck.event }}: {{ healthcheck.user }} from {{ healthcheck.host }} at {{ healthcheck.timestamp }} ({{ healthcheck._HOSTNAME }})
+  template: "SSH {{event.type}}: {{event.user}} from {{event.host}} at {{event.timestamp}} ({{event._HOSTNAME}})"
+  cooldown: 5m
   notify:
     - telegram
+  events:
+    on_unmatched: drop
+    override:
+      failure:
+        cooldown: 1m
+      login: {}
 ```
 
 ---
@@ -135,4 +140,4 @@ Concurrency is tracked **per alert name**, not per healthcheck script. Two alert
 
 For `watch` and `pipe` triggers, there is no queue — just a single byte buffer. New data keeps accumulating while a healthcheck is running. When the current invocation finishes, the entire buffer is flushed into the next invocation as a single stdin payload.
 
-For multi-record healthchecks (using `--- records` / `--- record` output), the buffer gate waits until all records from a batch are fully processed (channel closed) before firing the next invocation. Buffered data accumulated during that time is flushed as one batch.
+For multi-event healthchecks (using `--- event` output with multiple events), the buffer gate waits until all events from a batch are fully processed (channel closed) before firing the next invocation. Buffered data accumulated during that time is flushed as one batch.

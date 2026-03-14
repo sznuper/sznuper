@@ -82,52 +82,57 @@ alerts:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
       mount: /
-    cooldown:
-      warning: 10m
-      critical: 1m
-      recovery: true
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}% ({{healthcheck.available}} remaining)"
-    notify: [telegram, logfile]
+    cooldown: 10m
+    template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}% ({{event.available}} remaining)"
+    notify:
+      - telegram
+      - logfile
+    events:
+      healthy: [ok]
 
   - name: ssl_expiry
     healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
     trigger:
       interval: 6h
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Certificate for {{healthcheck.domain}} expires in {{healthcheck.days_left}} days"
-    notify: [telegram]
+    template: "[{{event.type | upper}}] {{globals.hostname}}: Certificate for {{event.domain}} expires in {{event.days_left}} days"
+    notify:
+      - telegram
 
   - name: experimental_check
     healthcheck: https://example.com/beta_check.sh
     sha256: false                         # explicit opt-out, re-fetched on daemon start
     trigger:
       interval: 1h
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: {{healthcheck.message}}"
-    notify: [logfile]
+    template: "[{{event.type | upper}}] {{globals.hostname}}: {{event.message}}"
+    notify:
+      - logfile
 
-  - name: ssh_login
-    healthcheck: file://ssh_login
+  - name: ssh_journal
+    healthcheck: file://ssh_journal
     trigger:
-      watch: /var/log/auth.log
-    timeout: 30s
-    args:
-      watch: all
-      exclude_users: deploy
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: SSH login by {{healthcheck.user}} from {{healthcheck.ip}}"
-    notify: [telegram]
+      pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+    cooldown: 5m
+    template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
+    notify:
+      - telegram
+    events:
+      on_unmatched: drop
+      override:
+        failure:
+          cooldown: 1m
+        login: {}
 
-  # Per-alert service override with template conditionals
+  # Per-alert service override with per-event-type params
   - name: postgres_down
     healthcheck: file://systemd_unit
     trigger:
       interval: 15s
     args:
       units: postgresql
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Unit {{healthcheck.unit}} is {{healthcheck.state}}"
+    template: "[{{event.type | upper}}] {{globals.hostname}}: Unit {{event.unit}} is {{event.state}}"
     notify:
       - logfile
       - ops-slack
-      - service: telegram
-        params:
-          notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
+      - telegram
 ```

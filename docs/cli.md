@@ -44,12 +44,13 @@ $ echo "some log line" | sznuper run ssh_login
 ```
 $ sznuper run disk_check
 ✓ Healthcheck: file://disk_usage
-  Output:
-    status=warning
-    usage=84
+  EventType: high_usage
+  Fields:
+    mount=/
+    usage_percent=84.3
     total=50G
     available=8G
-  Rendered: "WARNING vps-01: Disk / at 84% (8G remaining)"
+  Rendered: "[HIGH_USAGE] vps-01: Disk / at 84.3% (8G remaining)"
   Notified: telegram, logfile
 ```
 
@@ -58,12 +59,13 @@ Use `--dry-run` to skip sending notifications:
 ```
 $ sznuper run disk_check --dry-run
 ✓ Healthcheck: file://disk_usage
-  Output:
-    status=warning
-    usage=84
+  EventType: high_usage
+  Fields:
+    mount=/
+    usage_percent=84.3
     total=50G
     available=8G
-  Rendered: "WARNING vps-01: Disk / at 84% (8G remaining)"
+  Rendered: "[HIGH_USAGE] vps-01: Disk / at 84.3% (8G remaining)"
   Would notify: telegram, logfile
 ```
 

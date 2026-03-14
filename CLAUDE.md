@@ -10,7 +10,7 @@ Sznuper is intentionally dumb. The daemon is a generic executor — it runs any 
 
 - **Daemon:** Go — generic healthcheck executor, doesn't interpret healthcheck logic
 - **Official healthchecks:** C compiled with Cosmopolitan Libc (portable single binaries, direct syscalls, zero dependencies) — a convenience, not a requirement
-- **User healthchecks:** Any executable that outputs `KEY=VALUE` lines to stdout with a required `status` key — first-class, identical interface to official healthchecks
+- **User healthchecks:** Any executable that emits `--- event` blocks to stdout with a required `type` field — first-class, identical interface to official healthchecks
 
 ## Key Dependencies
 

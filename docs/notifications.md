@@ -5,83 +5,77 @@
 Alert templates define the message body sent to services. Templates are Go [`text/template`](https://pkg.go.dev/text/template) strings with [Sprig](https://masterminds.github.io/sprig/) functions, resolved at notification time when the healthcheck has run.
 
 ```yaml
-template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
+template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}%"
 ```
 
 **Available template variables:**
 
 | Variable | Source |
 |---|---|
+| `{{event.type}}` | The event type name (required field) |
+| `{{event.*}}` | All key-value pairs from the event payload |
 | `{{globals.hostname}}` | Global `hostname` or system hostname |
 | `{{alert.name}}` | Alert's `name` field |
-| `{{healthcheck.*}}` | All key-value pairs from healthcheck stdout (including `{{healthcheck.status}}`) |
-| `{{healthcheck.status_emoji}}` | Derived from `healthcheck.status`: 🔴 critical, 🟡 warning, 🟢 ok |
 | `{{args.*}}` | Args from alert config |
 
-All healthcheck output values are strings. Use `atoi` or `float64` for numeric operations.
-
-`healthcheck.status_emoji` is a **derived variable** — computed by the daemon from `healthcheck.status`, not from healthcheck output. A healthcheck cannot override it.
+All event field values are strings. Use `atoi` or `float64` for numeric operations.
 
 **Sprig functions are available for advanced formatting:**
 
 ```yaml
 # String manipulation
-template: "{{healthcheck.status | upper}} on {{globals.hostname}}"                   # "WARNING on vps-01"
+template: "[{{event.type | upper}}] on {{globals.hostname}}"                   # "[HIGH_USAGE] on vps-01"
 
 # Conditionals
 template: >
-  {{healthcheck.status_emoji}}
-  {{globals.hostname}}: Disk at {{healthcheck.usage}}%
+  {{globals.hostname}}: Disk at {{event.usage_percent}}%
 
 # Math
-template: "{{healthcheck.available_bytes | float64 | div 1073741824 | printf \"%.1f\"}}GB remaining"
+template: "{{event.available_bytes | float64 | div 1073741824 | printf \"%.1f\"}}GB remaining"
 
 # Default values
 template: "{{args.mount | default \"/\"}}"
 
 # Date/time
-template: "{{now | date \"15:04\"}} {{healthcheck.status | upper}} {{globals.hostname}}"
+template: "{{now | date \"15:04\"}} [{{event.type | upper}}] {{globals.hostname}}"
 ```
 
 See [Sprig documentation](https://masterminds.github.io/sprig/) for the full list of available functions.
 
 `template` is a required field. Each healthcheck defines its own output keys, so a meaningful template must be written per alert.
 
-### Per-Service Template Overrides
+### Template Inheritance
 
-The top-level `template` is the default message body for all services. Individual services can override it in the `notify` list, along with any Shoutrrr options:
+The alert-level `template` is the default for all event types. Per-event-type templates can be specified in `events.override.<type>.template`. Templates are not a per-service concern — all notify targets for an event receive the same rendered message.
 
 ```yaml
 alerts:
-  - name: disk_check
-    healthcheck: file://disk_usage
+  - name: ssh_journal
+    healthcheck: file://ssh_journal
     trigger:
-      interval: 30s
-    args:
-      threshold_warn_percent: 80
-      threshold_crit_percent: 95
-      mount: /
-    cooldown:
-      warning: 10m
-      critical: 1m
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
+      pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+    template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
+    cooldown: 5m
     notify:
-      - logfile
-      - ops-slack
-      - service: telegram
-        template: "*{{healthcheck.status | upper}}* `{{globals.hostname}}`: Disk {{args.mount}} at {{healthcheck.usage}}%"
-        params:
-          parsemode: MarkdownV2
-          notification: "{{if eq healthcheck.status \"warning\"}}false{{else}}true{{end}}"
-      - service: email
-        template: "Disk {{args.mount}} is at {{healthcheck.usage}}%\n\nHost: {{globals.hostname}}\nAvailable: {{healthcheck.available}}"
-        params:
-          subject: "[{{healthcheck.status | upper}}] {{globals.hostname}}: {{alert.name}}"
+      - telegram
+      - logger
+    events:
+      on_unmatched: drop
+      override:
+        failure:
+          cooldown: 1m
+          notify:
+            - logger
+            - telegram:
+                params:
+                  notification: "false"
+        login:
+          template: "SSH login by {{event.user}} from {{event.host}}"
+          notify:
+            - telegram
 ```
 
-**Template resolution:** alert.notify[].template → alert.template
-
-`{{...}}` variables work inside Shoutrrr options values too (e.g. `subject`, `notification`).
+`{{...}}` variables work inside Shoutrrr params values too (e.g. `notification`).
 
 ---
 
@@ -108,7 +102,7 @@ Populated from globals, alert config, and healthcheck output when a notification
 ```yaml
 alerts:
   - name: disk_check
-    template: "{{healthcheck.status | upper}} {{globals.hostname}}: Disk {{args.mount}} at {{healthcheck.usage}}%"
+    template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}%"
 ```
 
 ---
@@ -135,9 +129,9 @@ notify: [telegram, logfile]
 ```yaml
 notify:
   - logfile
-  - service: telegram
-    params:
-      notification: true     # override telegram's default for this alert
+  - telegram:
+      params:
+        notification: "true"   # override telegram's default for this alert
 ```
 
 Options values support `{{...}}` template variables for dynamic behavior based on healthcheck output.
@@ -153,7 +147,7 @@ Supported services include: Telegram, Discord, Slack, Email (SMTP), Gotify, Goog
 The daemon's responsibility is:
 - **Routing:** which services to notify, based on alert config.
 - **Option merging:** resolve service base options → alert-level overrides into a final set of Shoutrrr params.
-- **Spam prevention:** cooldown logic per alert and status.
+- **Spam prevention:** cooldown logic per alert and event type.
 - **Templating:** resolve `{{...}}` variables into the final message body and option values.
 
 Shoutrrr handles the actual delivery. The daemon does not interpret service options — it passes the merged key-value pairs directly to Shoutrrr.
