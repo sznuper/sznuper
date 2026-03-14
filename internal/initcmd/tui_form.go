@@ -35,9 +35,6 @@ func newFormModel(svcType ServiceType, existing map[string]bool) formModel {
 		if f.EnvVar != "" {
 			ti.SetValue(f.EnvVar)
 		}
-		if f.IsSecret {
-			ti.EchoMode = textinput.EchoPassword
-		}
 		inputs = append(inputs, ti)
 	}
 
