@@ -15,7 +15,7 @@ import (
 
 func TestResolve_FileRelative(t *testing.T) {
 	dir := t.TempDir()
-	writeExecutable(t, dir, "my_check", "#!/bin/sh\necho status=ok")
+	writeExecutable(t, dir, "my_check", "#!/bin/sh\necho '--- event'\necho type=ok")
 
 	rc, err := Resolve("file://my_check", ResolveOpts{HealthchecksDir: dir})
 	if err != nil {
@@ -32,7 +32,7 @@ func TestResolve_FileRelative(t *testing.T) {
 func TestResolve_FileAbsolute(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "abs_check")
-	writeExecutable(t, dir, "abs_check", "#!/bin/sh\necho status=ok")
+	writeExecutable(t, dir, "abs_check", "#!/bin/sh\necho '--- event'\necho type=ok")
 
 	rc, err := Resolve("file://"+path, ResolveOpts{})
 	if err != nil {
@@ -84,7 +84,7 @@ func TestResolve_UnsupportedScheme(t *testing.T) {
 }
 
 func TestResolve_HTTPSPinned_DownloadsAndCaches(t *testing.T) {
-	content := []byte("#!/bin/sh\necho status=ok\n")
+	content := []byte("#!/bin/sh\necho '--- event'\necho type=ok\n")
 	hash := sha256hex(content)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +123,7 @@ func TestResolve_HTTPSPinned_DownloadsAndCaches(t *testing.T) {
 
 func TestResolve_HTTPSPinned_HashMismatch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("#!/bin/sh\necho status=ok\n"))
+		_, _ = w.Write([]byte("#!/bin/sh\necho '--- event'\necho type=ok\n"))
 	}))
 	defer srv.Close()
 
@@ -140,7 +140,7 @@ func TestResolve_HTTPSPinned_HashMismatch(t *testing.T) {
 }
 
 func TestResolve_HTTPSPinned_ServerDown_UsesCache(t *testing.T) {
-	content := []byte("#!/bin/sh\necho status=ok\n")
+	content := []byte("#!/bin/sh\necho '--- event'\necho type=ok\n")
 	hash := sha256hex(content)
 
 	cacheDir := t.TempDir()
@@ -163,7 +163,7 @@ func TestResolve_HTTPSPinned_ServerDown_UsesCache(t *testing.T) {
 }
 
 func TestResolve_HTTPSUnpinned(t *testing.T) {
-	content := []byte("#!/bin/sh\necho status=ok\n")
+	content := []byte("#!/bin/sh\necho '--- event'\necho type=ok\n")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(content)
 	}))

@@ -17,7 +17,7 @@ func tempScript(t *testing.T, content string) string {
 }
 
 func TestExec_Success(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\necho usage=10\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=ok\necho usage=10\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -29,13 +29,13 @@ func TestExec_Success(t *testing.T) {
 	if result.ExitCode != 0 {
 		t.Errorf("exit code = %d, want 0", result.ExitCode)
 	}
-	if !strings.Contains(result.Stdout, "status=ok") {
-		t.Errorf("stdout = %q, missing status=ok", result.Stdout)
+	if !strings.Contains(result.Stdout, "type=ok") {
+		t.Errorf("stdout = %q, missing type=ok", result.Stdout)
 	}
 }
 
 func TestExec_NonZeroExit(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=critical\nexit 1\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=critical_usage\nexit 1\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -66,7 +66,7 @@ func TestExec_Timeout(t *testing.T) {
 }
 
 func TestExec_EnvArgs(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\necho trigger=$HEALTHCHECK_TRIGGER\necho mount=$HEALTHCHECK_ARG_MOUNT\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=ok\necho trigger=$HEALTHCHECK_TRIGGER\necho mount=$HEALTHCHECK_ARG_MOUNT\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -168,7 +168,8 @@ func TestBuildEnv_NoArgs(t *testing.T) {
 func TestExec_EnvArgTypes(t *testing.T) {
 	// Script echoes back all HEALTHCHECK_ARG_* env vars
 	script := tempScript(t, `#!/bin/sh
-echo status=ok
+echo '--- event'
+echo type=ok
 echo float=$HEALTHCHECK_ARG_THRESHOLD
 echo int=$HEALTHCHECK_ARG_COUNT
 echo str=$HEALTHCHECK_ARG_MOUNT
@@ -203,7 +204,7 @@ echo bool=$HEALTHCHECK_ARG_RAW
 }
 
 func TestExec_EnvInResult(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=ok\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -229,7 +230,7 @@ func TestExec_EnvInResult(t *testing.T) {
 }
 
 func TestExec_Stderr(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\necho debug info >&2\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=ok\necho debug info >&2\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -244,7 +245,7 @@ func TestExec_Stderr(t *testing.T) {
 }
 
 func TestExec_Stdin(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\nread line\necho status=ok\necho line=$line\n")
+	script := tempScript(t, "#!/bin/sh\nread line\necho '--- event'\necho type=ok\necho line=$line\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
@@ -260,7 +261,7 @@ func TestExec_Stdin(t *testing.T) {
 }
 
 func TestExec_IsolatedEnv(t *testing.T) {
-	script := tempScript(t, "#!/bin/sh\necho status=ok\necho home=$HOME\n")
+	script := tempScript(t, "#!/bin/sh\necho '--- event'\necho type=ok\necho home=$HOME\n")
 
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
