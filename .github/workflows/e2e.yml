@@ -20,7 +20,7 @@ jobs:
           - arch: aarch64
             server_type: cax11
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install SSH key
         run: |
