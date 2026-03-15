@@ -62,7 +62,7 @@ Runs an arbitrary command and feeds its stdout to the healthcheck via stdin. Des
 
 ```yaml
 trigger:
-  pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+  pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
 ```
 
 Behavior:
@@ -71,13 +71,13 @@ Behavior:
 - If the command exits (non-zero or EOF), the pipe trigger restarts it after a 5-second backoff. This handles transient failures and system journal restarts.
 - If the daemon context is cancelled, the subprocess is killed and the loop exits cleanly.
 
-Example — real-time SSH failure detection via the systemd journal (works on any distro, including Debian 13+ without `auth.log`):
+Example — real-time SSH event detection via the systemd journal (works on any distro, including Debian 13+ without `auth.log`):
 
 ```yaml
 - name: ssh_journal
   healthcheck: file://ssh_journal
   trigger:
-    pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+    pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
   template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
   cooldown: 5m
   notify:
@@ -85,9 +85,8 @@ Example — real-time SSH failure detection via the systemd journal (works on an
   events:
     on_unmatched: drop
     override:
-      failure:
-        cooldown: 1m
       login: {}
+      logout: {}
 ```
 
 Advanced mode — pass additional journal fields through to the template:
@@ -96,7 +95,7 @@ Advanced mode — pass additional journal fields through to the template:
 - name: ssh_journal
   healthcheck: file://ssh_journal
   trigger:
-    pipe: "journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
+    pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
   args:
     advanced: true
   template: "SSH {{event.type}}: {{event.user}} from {{event.host}} at {{event.timestamp}} ({{event._HOSTNAME}})"
@@ -106,9 +105,8 @@ Advanced mode — pass additional journal fields through to the template:
   events:
     on_unmatched: drop
     override:
-      failure:
-        cooldown: 1m
       login: {}
+      logout: {}
 ```
 
 ---

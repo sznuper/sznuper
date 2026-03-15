@@ -3,7 +3,7 @@ alerts:
     healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.14.0/ssh_journal
     sha256: b25ab94df9044176fa4ba220fa0713ad4bd0765e58744b5e7bbed8e7af3af9db
     trigger:
-      pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+      pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     cooldown: 5m
     template: |-
       [{{event.type | upper}}] {{globals.hostname}}:
@@ -11,6 +11,5 @@ alerts:
     events:
       on_unmatched: drop
       override:
-        failure:
-          cooldown: 1m
         login: {}
+        logout: {}

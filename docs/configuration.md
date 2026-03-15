@@ -111,7 +111,7 @@ alerts:
   - name: ssh_journal
     healthcheck: file://ssh_journal
     trigger:
-      pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+      pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     cooldown: 5m
     template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
     notify:
@@ -119,9 +119,8 @@ alerts:
     events:
       on_unmatched: drop
       override:
-        failure:
-          cooldown: 1m
         login: {}
+        logout: {}
 
   # Per-alert service override with per-event-type params
   - name: postgres_down
