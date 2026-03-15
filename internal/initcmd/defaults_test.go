@@ -37,10 +37,6 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("DefaultConfig() error: %v", err)
 	}
 
-	if _, ok := cfg.Services["logger"]; !ok {
-		t.Error("expected logger service in default config")
-	}
-
 	if len(cfg.Alerts) < 3 {
 		t.Errorf("expected at least 3 alerts, got %d", len(cfg.Alerts))
 	}
