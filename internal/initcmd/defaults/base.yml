@@ -7,7 +7,7 @@ alerts:
       [{{event.type | upper}}] {{globals.hostname}}: sznuper {{event.type}}
 
   - name: disk_usage
-    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.11.0/disk_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.12.0/disk_usage
     sha256: 59ed70a9e09ae6e0db28355c877a579c32fafda7c7baab66b21a652cefb33f51
     trigger:
       interval: 30s
@@ -23,7 +23,7 @@ alerts:
       healthy: [ok]
 
   - name: memory_usage
-    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.11.0/memory_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.12.0/memory_usage
     sha256: 3ecdb04780b3d43a78dbe1fb28d1a1526fd831c1ce93f86953e2e0708259eb6c
     trigger:
       interval: 30s
@@ -38,7 +38,7 @@ alerts:
       healthy: [ok]
 
   - name: cpu_usage
-    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.11.0/cpu_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.12.0/cpu_usage
     sha256: 8b9e4b2b4aa0e1cd3227ab20ede98a42e1442f77ac36c6d41fc12e691e8eddf5
     trigger:
       interval: 30s
