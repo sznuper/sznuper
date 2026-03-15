@@ -6,6 +6,7 @@ alerts:
       pipe: journalctl -f --since=now -u ssh -u sshd --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     cooldown: 5m
     template: |-
+      [{{event.type | upper}}] {{globals.hostname}}:
       SSH {{event.type}} from {{event.host}} as {{event.user}}
     events:
       on_unmatched: drop
