@@ -141,6 +141,10 @@ func runNonInteractive(cfg *config.Config, outPath string) error {
 		added = append(added, name)
 	}
 
+	if len(cfg.Services) == 0 {
+		return fmt.Errorf("at least one notification service is required (use --add-service)")
+	}
+
 	for i := range cfg.Alerts {
 		for _, name := range added {
 			cfg.Alerts[i].Notify = append(cfg.Alerts[i].Notify,

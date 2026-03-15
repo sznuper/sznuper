@@ -100,6 +100,10 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.picker = newPickerModel()
 		return m, m.picker.Init()
 	case actionFinishMsg:
+		if len(m.list.services) == 0 {
+			m.err = "Add at least one notification service before saving"
+			return m, nil
+		}
 		m.buildConfig()
 		m.confirm = newConfirmModel(m.cfg, m.path)
 		m.screen = screenConfirm

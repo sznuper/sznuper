@@ -37,7 +37,7 @@ type Alert struct {
 	Args        map[string]any `yaml:"args,omitempty"`
 	Template    string         `yaml:"template"    validate:"required"`
 	Cooldown    string         `yaml:"cooldown,omitempty"`
-	Notify      []NotifyTarget `yaml:"notify"      validate:"required,dive"`
+	Notify      []NotifyTarget `yaml:"notify,omitempty" validate:"required,dive"`
 	Events      *Events        `yaml:"events,omitempty"`
 }
 

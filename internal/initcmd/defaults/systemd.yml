@@ -7,8 +7,6 @@ alerts:
     cooldown: 5m
     template: |-
       SSH {{event.type}} from {{event.host}} as {{event.user}}
-    notify:
-      - logger
     events:
       on_unmatched: drop
       override:
