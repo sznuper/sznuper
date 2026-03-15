@@ -116,6 +116,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/sznuper start
+EnvironmentFile=-/etc/sznuper/.env
 Restart=on-failure
 RestartSec=5
 
