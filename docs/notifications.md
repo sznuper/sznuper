@@ -140,7 +140,7 @@ Options values support `{{...}}` template variables for dynamic behavior based o
 
 ## Notification Delivery
 
-Built on top of [Shoutrrr](https://containrrr.dev/shoutrrr/). Any Shoutrrr-supported service works as a notification destination.
+Built on top of [Shoutrrr](https://shoutrrr.nickfedor.com/v0.14.0/services/overview/). Any Shoutrrr-supported service works as a notification destination.
 
 Supported services include: Telegram, Discord, Slack, Email (SMTP), Gotify, Google Chat, IFTTT, Mattermost, Matrix, Ntfy, OpsGenie, Pushbullet, Pushover, Rocketchat, Teams, Zulip, generic webhooks, and the built-in logger.
 
