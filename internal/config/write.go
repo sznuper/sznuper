@@ -4,15 +4,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/goccy/go-yaml"
 )
 
+// sectionBreak matches top-level YAML keys (no leading whitespace) to insert
+// blank lines between sections like options, globals, services, alerts.
+var sectionBreak = regexp.MustCompile(`(?m)^(\S)`)
+
+// Marshal serializes cfg to formatted YAML bytes.
+func Marshal(cfg *Config) ([]byte, error) {
+	data, err := yaml.MarshalWithOptions(cfg, yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		return nil, fmt.Errorf("marshaling config: %w", err)
+	}
+
+	// Add blank lines between top-level sections.
+	out := sectionBreak.ReplaceAllString(string(data), "\n$1")
+	return []byte(out[1:]), nil // trim leading blank line
+}
+
 // Write serializes cfg to YAML and writes it to path, creating parent dirs.
 func Write(cfg *Config, path string) error {
-	data, err := yaml.Marshal(cfg)
+	data, err := Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("marshaling config: %w", err)
+		return err
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

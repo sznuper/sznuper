@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/goccy/go-yaml"
 	"github.com/sznuper/sznuper/internal/config"
 )
 
@@ -17,7 +16,7 @@ type confirmModel struct {
 }
 
 func newConfirmModel(cfg *config.Config, path string) confirmModel {
-	data, _ := yaml.Marshal(cfg)
+	data, _ := config.Marshal(cfg)
 	return confirmModel{
 		cfg:     cfg,
 		path:    path,
