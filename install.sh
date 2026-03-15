@@ -72,8 +72,12 @@ download_binary() {
 
     info "Downloading $BINARY_NAME $TAG ($ARCH)..."
     mkdir -p "$BIN_DIR"
-    curl -fsSL -o "$BIN_DIR/$BINARY_NAME" "$URL"
-    chmod +x "$BIN_DIR/$BINARY_NAME"
+    TMP_BIN=$(mktemp "$BIN_DIR/$BINARY_NAME.XXXXXX")
+    trap 'rm -f "$TMP_BIN"' EXIT
+    curl -fsSL -o "$TMP_BIN" "$URL"
+    chmod +x "$TMP_BIN"
+    mv -f "$TMP_BIN" "$BIN_DIR/$BINARY_NAME"
+    trap - EXIT
 
     ok "Installed $BIN_DIR/$BINARY_NAME ($TAG)"
 }
