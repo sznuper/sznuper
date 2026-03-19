@@ -40,6 +40,18 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 - Re-fetched on `sznuper validate`.
 - Pinned scripts survive restarts, unpinned scripts don't.
 
+### `builtin://`
+
+Synthetic healthchecks handled directly by the daemon — no external process is spawned.
+
+- `builtin://lifecycle` — emits a startup/shutdown event with the configured alert count. Used internally by the default `sznuper_lifecycle` alert.
+- `builtin://ok` — always emits a single `type=ok` event. Useful for testing notifications, validating config, or as a minimal "alive" signal.
+
+Behavior:
+- No file resolution, downloading, or caching. The daemon generates the output in-process.
+- `sha256` is not applicable and should be omitted.
+- `args` are passed as params to the builtin handler. `builtin://ok` ignores all params.
+
 ### `sha256` Summary
 
 | Scheme    | `sha256` field | Default   | Behavior                                          |
@@ -47,6 +59,7 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 | `file://`  | optional       | `false`   | If set, validates hash before every run.          |
 | `https://` | required       | —         | Hash string: fetch once, cache forever.           |
 | `https://` | required       | —         | `false`: fetch once per daemon start, no persist. |
+| `builtin://`| n/a           | —         | No file on disk — output generated in-process.    |
 
 ### Healthcheck Lifecycle Flowcharts
 
