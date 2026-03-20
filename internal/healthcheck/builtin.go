@@ -11,6 +11,8 @@ func ExecBuiltin(name string, params map[string]string) (*ExecResult, error) {
 	switch name {
 	case "lifecycle":
 		return execLifecycle(params)
+	case "ok":
+		return &ExecResult{Stdout: "--- event\ntype=ok\n"}, nil
 	default:
 		return nil, fmt.Errorf("unknown builtin healthcheck: %s", name)
 	}
