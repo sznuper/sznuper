@@ -2,9 +2,11 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sznuper/sznuper/internal/config"
@@ -156,6 +158,85 @@ func TestFindAlert(t *testing.T) {
 	}
 	if a := r.FindAlert("nonexistent"); a != nil {
 		t.Errorf("FindAlert(nonexistent) = %v, want nil", a)
+	}
+}
+
+func TestRunAlert_SideEffectsRun(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir, "#!/bin/sh\necho '--- event'\necho type=ok\necho usage=42\n")
+
+	outFile := filepath.Join(dir, "se-output.txt")
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{"hostname": "test-host"},
+		Services: map[string]config.Service{
+			"logger": {URL: "logger://"},
+		},
+		Alerts: []config.Alert{
+			{
+				Name:        "se_test",
+				Healthcheck: "file://check.sh",
+				Template:    "msg",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				SideEffects: []string{
+					fmt.Sprintf("echo \"$HEALTHCHECK_EVENT\" > %s", outFile),
+				},
+			},
+		},
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := New(cfg, logger)
+
+	// Not dry-run so side effects actually run.
+	result := <-r.RunAlertOpts(context.Background(), &cfg.Alerts[0], RunOpts{})
+	if result.Err != nil {
+		t.Fatalf("unexpected error at stage %q: %v", result.ErrStage, result.Err)
+	}
+	if result.SideEffectsRun != 1 {
+		t.Errorf("SideEffectsRun = %d, want 1", result.SideEffectsRun)
+	}
+
+	// Verify the side effect received the raw event block via HEALTHCHECK_EVENT.
+	data, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatalf("reading side effect output: %v", err)
+	}
+	if !strings.Contains(string(data), "type=ok") {
+		t.Errorf("side effect output = %q, want to contain 'type=ok'", string(data))
+	}
+}
+
+func TestRunAlert_SideEffectsSkippedDryRun(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir, "#!/bin/sh\necho '--- event'\necho type=ok\n")
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{"hostname": "test-host"},
+		Services: map[string]config.Service{
+			"logger": {URL: "logger://"},
+		},
+		Alerts: []config.Alert{
+			{
+				Name:        "se_dry",
+				Healthcheck: "file://check.sh",
+				Template:    "msg",
+				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				SideEffects: []string{"echo should-not-run"},
+			},
+		},
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := New(cfg, logger)
+
+	result := <-r.RunAlert(context.Background(), &cfg.Alerts[0], true, nil, nil)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if result.SideEffectsRun != 0 {
+		t.Errorf("SideEffectsRun = %d, want 0 in dry-run", result.SideEffectsRun)
 	}
 }
 

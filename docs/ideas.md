@@ -1,31 +1,5 @@
 # Ideas
 
-## Side effects
-
-Allow alerts to define a list of executables that run after each event, in addition to notifications. Side effects resolve and execute the same way healthchecks do (`file://`, `https://`), keeping the interface uniform.
-
-The raw `--- event` block from the healthcheck's stdout is piped as stdin to each side effect. No JSON, no new format — the side effect gets exactly what the healthcheck emitted and is responsible for parsing it (or ignoring it). Parsing `KEY=VALUE` lines is trivial in any language, so the cost of each side effect independently parsing is negligible compared to the daemon needing to serialize into a different format.
-
-This keeps the daemon dumb — it just pipes bytes through — and stays consistent with the existing I/O contract.
-
-```yaml
-- name: disk_check
-  healthcheck: file://disk_usage
-  side_effects:
-    - file://log_to_sqlite
-    - file://update_dashboard
-  triggers:
-    - interval: 30s
-  template: "..."
-  notify:
-    - telegram
-```
-
-Open questions:
-- Should side effects also receive globals (hostname, etc.) as env vars, same as healthchecks get args?
-- Should side effect failures be logged silently, or can they optionally trigger notifications too?
-- Should side effects run in parallel or sequentially?
-
 ## Environment variables and secrets management
 
 sznuper needs secrets (API tokens, chat IDs) to talk to notification services. Currently the systemd service reads from `EnvironmentFile=-/etc/sznuper/.env`, but there's no coherent strategy across install modes. The `.env` file isn't created by anything — users have to know to make it themselves.

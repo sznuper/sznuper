@@ -106,6 +106,10 @@ func printResult(r runner.Result) {
 		}
 		fmt.Printf("  %s: %s\n", label, strings.Join(r.Notified, ", "))
 	}
+
+	if r.SideEffectsRun > 0 {
+		fmt.Printf("  Side effects: %d run\n", r.SideEffectsRun)
+	}
 }
 
 func uniqueMessages(rendered map[string]string) []string {

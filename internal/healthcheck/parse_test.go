@@ -181,6 +181,25 @@ func TestParseEvents_BoolArray(t *testing.T) {
 	}
 }
 
+func TestParseEvents_RawPreservesBlockText(t *testing.T) {
+	stdout := "--- event\ntype=failure\nuser=root\nhost=1.2.3.4\n--- event\ntype=ok\nusage=42\n"
+	events, err := ParseEvents(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events = %d, want 2", len(events))
+	}
+	want0 := "type=failure\nuser=root\nhost=1.2.3.4"
+	if events[0].Raw != want0 {
+		t.Errorf("events[0].Raw = %q, want %q", events[0].Raw, want0)
+	}
+	want1 := "type=ok\nusage=42\n"
+	if events[1].Raw != want1 {
+		t.Errorf("events[1].Raw = %q, want %q", events[1].Raw, want1)
+	}
+}
+
 func TestParseEvents_EmptyArray(t *testing.T) {
 	stdout := "--- event\ntype=ok\narr=[]\n"
 	events, err := ParseEvents(stdout)

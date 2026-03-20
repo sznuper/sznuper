@@ -82,6 +82,8 @@ alerts:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
       mount: /
+    side_effects:
+      - cat >> /var/log/sznuper/disk-events.log
     cooldown: 10m
     template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}% ({{event.available}} remaining)"
     notify:
@@ -135,3 +137,29 @@ alerts:
       - ops-slack
       - telegram
 ```
+
+---
+
+## Side Effects
+
+Side effects are shell commands that run after each event, in addition to notifications. They receive the raw `--- event` block as stdin and are useful for logging events to files, updating dashboards, or triggering external webhooks.
+
+```yaml
+alerts:
+  - name: disk_check
+    healthcheck: file://disk_usage
+    side_effects:
+      - cat >> /var/log/sznuper/disk-events.log
+      - curl -s -X POST http://localhost:8080/webhook -d @-
+    # ...
+```
+
+**Behavior:**
+- Commands run via `/bin/sh -c` (plain shell commands, not URI schemes)
+- Env vars: same as healthcheck (`HEALTHCHECK_TRIGGER`, `HEALTHCHECK_ARG_*`) plus `SZNUPER_ALERT_NAME`, `SZNUPER_EVENT_TYPE`, and `HEALTHCHECK_EVENT` (the full raw event block)
+- Stdin is not used — event data is in `HEALTHCHECK_EVENT`, so your command's stdin remains free
+- Run in parallel after notifications are sent
+- Timeout: inherits the alert's `timeout`, defaults to 30s
+- Failures are logged at warn level but do not fail the alert (non-fatal)
+- Skipped in dry-run mode
+- Skipped for dropped, suppressed, and state-machine-skipped events (same gate as notify)

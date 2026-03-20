@@ -10,6 +10,7 @@ import (
 	"github.com/sznuper/sznuper/internal/cooldown"
 	"github.com/sznuper/sznuper/internal/healthcheck"
 	"github.com/sznuper/sznuper/internal/notify"
+	"github.com/sznuper/sznuper/internal/sideeffect"
 )
 
 // Runner orchestrates the healthcheck -> parse -> template -> notify pipeline.
@@ -299,6 +300,37 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 			}
 			result.Notified = append(result.Notified, t.ServiceName)
 			log.Debug("notification sent", "service", t.ServiceName)
+		}
+
+		// f. Side effects.
+		if len(alert.SideEffects) > 0 {
+			if dryRun {
+				log.Info("would run side effects (dry-run)", "count", len(alert.SideEffects))
+			} else {
+				seTimeout, _ := time.ParseDuration(alert.Timeout)
+				if seTimeout == 0 {
+					seTimeout = 30 * time.Second
+				}
+				seCtx, seCancel := context.WithTimeout(ctx, seTimeout)
+
+				seEnv := make([]string, len(result.Env), len(result.Env)+3)
+				copy(seEnv, result.Env)
+				seEnv = append(seEnv, "SZNUPER_ALERT_NAME="+alert.Name)
+				seEnv = append(seEnv, "SZNUPER_EVENT_TYPE="+ev.Type)
+				seEnv = append(seEnv, "HEALTHCHECK_EVENT="+ev.Raw)
+
+				seResults := sideeffect.ExecAll(seCtx, alert.SideEffects, seEnv)
+				seCancel()
+
+				for _, r := range seResults {
+					if r.Err != nil {
+						log.Warn("side effect failed", "command", r.Command, "error", r.Err, "stderr", r.Stderr)
+					} else {
+						log.Debug("side effect completed", "command", r.Command)
+					}
+				}
+				result.SideEffectsRun = len(seResults)
+			}
 		}
 
 		result.Duration = time.Since(start)

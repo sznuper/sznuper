@@ -11,6 +11,7 @@ type Event struct {
 	Type   string
 	Fields map[string]string
 	Arrays map[string]any // typed slices: []string, []int64, or []bool
+	Raw    string         // original block text (without "--- event" delimiter)
 }
 
 // ParseEvents parses healthcheck stdout into a list of events.
@@ -48,11 +49,13 @@ func ParseEvents(stdout string) ([]Event, error) {
 
 	events := make([]Event, 0, len(blocks))
 	for i, block := range blocks {
+		raw := strings.Join(block, "\n")
 		ev := Event{
 			Fields: make(map[string]string),
 			Arrays: make(map[string]any),
+			Raw:    raw,
 		}
-		parseKeyValues(strings.Join(block, "\n"), ev.Fields, ev.Arrays)
+		parseKeyValues(raw, ev.Fields, ev.Arrays)
 
 		typ, ok := ev.Fields["type"]
 		if !ok {

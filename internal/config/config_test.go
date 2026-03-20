@@ -200,6 +200,33 @@ alerts:
 	}
 }
 
+func TestSideEffects(t *testing.T) {
+	yml := `
+alerts:
+  - name: test
+    healthcheck: file://test
+    triggers:
+      - interval: 1m
+    side_effects:
+      - cat > /tmp/se-test.txt
+      - curl -X POST http://localhost:8080/webhook
+    template: "test"
+    notify:
+      - log
+`
+	cfg := loadFromString(t, yml)
+	se := cfg.Alerts[0].SideEffects
+	if len(se) != 2 {
+		t.Fatalf("side_effects count = %d, want 2", len(se))
+	}
+	if se[0] != "cat > /tmp/se-test.txt" {
+		t.Errorf("side_effects[0] = %q, want %q", se[0], "cat > /tmp/se-test.txt")
+	}
+	if se[1] != "curl -X POST http://localhost:8080/webhook" {
+		t.Errorf("side_effects[1] = %q, want %q", se[1], "curl -X POST http://localhost:8080/webhook")
+	}
+}
+
 func TestEnvsubst(t *testing.T) {
 	yml := `
 services:

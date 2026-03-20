@@ -35,6 +35,7 @@ type Alert struct {
 	Triggers    []Trigger      `yaml:"triggers"`
 	Timeout     string         `yaml:"timeout,omitempty"`
 	Args        map[string]any `yaml:"args,omitempty"`
+	SideEffects []string       `yaml:"side_effects,omitempty"`
 	Template    string         `yaml:"template"    validate:"required"`
 	Cooldown    string         `yaml:"cooldown,omitempty"`
 	Notify      []NotifyTarget `yaml:"notify,omitempty" validate:"required,dive"`

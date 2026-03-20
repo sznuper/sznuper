@@ -17,6 +17,7 @@ type Result struct {
 	Suppressed      bool // notification suppressed by cooldown
 	IsRecovery      bool // recovery notification (unhealthy->healthy)
 	Dropped         bool // event dropped by on_unmatched: drop
+	SideEffectsRun  int
 	Duration        time.Duration
 	Err             error
 	ErrStage        string // "resolve", "exec", "parse", "template", "notify"
