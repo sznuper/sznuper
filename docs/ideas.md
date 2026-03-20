@@ -44,6 +44,25 @@ Open questions:
 - Should side effect failures be logged silently, or can they optionally trigger notifications too?
 - Should side effects run in parallel or sequentially?
 
+## Environment variables and secrets management
+
+sznuper needs secrets (API tokens, chat IDs) to talk to notification services. Currently the systemd service reads from `EnvironmentFile=-/etc/sznuper/.env`, but there's no coherent strategy across install modes. The `.env` file isn't created by anything — users have to know to make it themselves.
+
+This needs a proper design that covers all the deployment shapes:
+
+- **Root + systemd** — system service, config in `/etc/sznuper/`, `.env` next to it. Systemd `EnvironmentFile=` handles loading.
+- **Non-root + systemd user service** — config in `~/.config/sznuper/`, `.env` next to it. Needs `loginctl enable-linger` for persistence. We don't set this up yet.
+- **Non-root, no systemd** — running `sznuper start` manually or via cron. Who loads the `.env`? Does sznuper itself read it, or does the user `source` it in their shell?
+- **Root, no systemd** — e.g. Alpine/containers with OpenRC. Same question about who loads `.env`.
+
+Open questions:
+- Whose responsibility is it to create the `.env` file? `install.sh`, `sznuper init`, or both? `sznuper init` knows which services were chosen and could pre-fill variable names. `install.sh` could create the file with correct permissions (`600`).
+- Should sznuper itself load `.env` at startup (like Docker Compose does), or rely on the environment? Loading it ourselves would make the non-systemd case simpler — no need to `source` first. But it adds a feature to maintain and a place where "where do env vars come from?" gets confusing.
+- Where does `.env` live in each mode? Next to `config.yml`? Fixed path? Configurable in `options`?
+- File permissions — `.env` contains secrets and must be `600`. Who enforces this? Should `sznuper start` warn if the file is world-readable?
+- Secrets encryption — future goal. Don't design `.env` handling in a way that would conflict with later encryption support (e.g. `sznuper secrets set TELEGRAM_TOKEN` that encrypts at rest and decrypts at startup).
+- Should `sznuper validate` check that referenced `${VAR}` values are actually set in the environment / `.env` file, and warn if they're empty?
+
 ## Notification retry + failed delivery log
 
 ### Retry
