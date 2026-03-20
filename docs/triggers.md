@@ -2,15 +2,24 @@
 
 ## Trigger Types
 
-Each alert must have exactly one trigger.
+Each alert has a `triggers` list — one or more triggers that fire the same healthcheck independently.
+
+```yaml
+triggers:
+  - interval: 30s
+  - cron: "0 */6 * * *"
+  - watch: /etc/nginx/nginx.conf
+```
+
+Each trigger fires the healthcheck on its own schedule. Cooldown and state are shared across all triggers of the same alert.
 
 ### Interval
 
 Runs the healthcheck periodically on a fixed schedule.
 
 ```yaml
-trigger:
-  interval: 30s
+triggers:
+  - interval: 30s
 ```
 
 First run is immediate on daemon start, then repeats on the configured interval.
@@ -21,20 +30,20 @@ Runs the healthcheck on a cron schedule. Uses [robfig/cron](https://github.com/r
 
 ```yaml
 # Every 5 minutes
-trigger:
-  cron: "*/5 * * * *"
+triggers:
+  - cron: "*/5 * * * *"
 
 # Every day at 3am
-trigger:
-  cron: "0 3 * * *"
+triggers:
+  - cron: "0 3 * * *"
 
 # Every Monday at noon
-trigger:
-  cron: "0 12 * * 1"
+triggers:
+  - cron: "0 12 * * 1"
 
 # With seconds (6-field): every hour at :30
-trigger:
-  cron: "0 30 * * * *"
+triggers:
+  - cron: "0 30 * * * *"
 ```
 
 `interval` is better for frequent healthchecks ("every 30 seconds"). `cron` is better for scheduled healthchecks ("every day at 3am").
@@ -44,8 +53,8 @@ trigger:
 Watches a file for changes using inotify. When new lines are appended, they are piped to the healthcheck via stdin.
 
 ```yaml
-trigger:
-  watch: /var/log/auth.log
+triggers:
+  - watch: /var/log/auth.log
 ```
 
 Behavior:
@@ -61,8 +70,8 @@ Behavior:
 Runs an arbitrary command and feeds its stdout to the healthcheck via stdin. Designed for real-time event streams — primarily `journalctl -f` — where inotify has no analog.
 
 ```yaml
-trigger:
-  pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+triggers:
+  - pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
 ```
 
 Behavior:
@@ -76,8 +85,8 @@ Example — real-time SSH event detection via the systemd journal (works on any 
 ```yaml
 - name: ssh_journal
   healthcheck: file://ssh_journal
-  trigger:
-    pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
+  triggers:
+    - pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager"
   template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
   cooldown: 5m
   notify:
@@ -94,8 +103,8 @@ Advanced mode — pass additional journal fields through to the template:
 ```yaml
 - name: ssh_journal
   healthcheck: file://ssh_journal
-  trigger:
-    pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
+  triggers:
+    - pipe: "journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP,_HOSTNAME --no-pager"
   args:
     advanced: true
   template: "SSH {{event.type}}: {{event.user}} from {{event.host}} at {{event.timestamp}} ({{event._HOSTNAME}})"
@@ -119,8 +128,8 @@ An optional `timeout` field can be set per alert. If a healthcheck exceeds the t
 
 ```yaml
 - name: disk_check
-  trigger:
-    interval: 30s
+  triggers:
+    - interval: 30s
   timeout: 10s              # optional
 ```
 

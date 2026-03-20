@@ -1,23 +1,5 @@
 # Ideas
 
-## Multiple triggers per alert
-
-Currently each alert has a single `trigger` field (one of `interval`, `cron`, `watch`, `pipe`, or `lifecycle`). Change this to a list so an alert can have multiple triggers — e.g. multiple crons, or an interval combined with a watch.
-
-```yaml
-# before
-trigger:
-  interval: 30s
-
-# after
-triggers:
-  - interval: 30s
-  - cron: "0 */6 * * *"
-  - watch: /etc/nginx/nginx.conf
-```
-
-Each trigger fires the same healthcheck independently.
-
 ## Side effects
 
 Allow alerts to define a list of executables that run after each event, in addition to notifications. Side effects resolve and execute the same way healthchecks do (`file://`, `https://`), keeping the interface uniform.
@@ -32,8 +14,8 @@ This keeps the daemon dumb — it just pipes bytes through — and stays consist
   side_effects:
     - file://log_to_sqlite
     - file://update_dashboard
-  trigger:
-    interval: 30s
+  triggers:
+    - interval: 30s
   template: "..."
   notify:
     - telegram

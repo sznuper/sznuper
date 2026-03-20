@@ -18,7 +18,7 @@ Practical problems:
 
 ### Why goccy/go-yaml?
 
-- **`yaml.Strict()` / `DisallowUnknownField()`** — rejects unknown YAML keys, catching typos like `tirgger:` instead of `trigger:`.
+- **`yaml.Strict()` / `DisallowUnknownField()`** — rejects unknown YAML keys, catching typos like `tirggers:` instead of `triggers:`.
 - **Built-in `StructValidator` interface** — plugs in `go-playground/validator` at decode time. Validation errors include YAML line/column numbers.
 - **Native `yaml` struct tags** — no mapstructure indirection.
 - **Single-step decode+validate** — one call does parse, strict-field check, and struct validation.

@@ -10,9 +10,9 @@ import (
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
-func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, opts runner.RunOpts) {
+func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, trigger config.Trigger, opts runner.RunOpts) {
 	for {
-		err := s.runPipeOnce(ctx, alert, opts)
+		err := s.runPipeOnce(ctx, alert, trigger, opts)
 		if ctx.Err() != nil {
 			return
 		}
@@ -25,8 +25,8 @@ func (s *Scheduler) runPipeLoop(ctx context.Context, alert *config.Alert, opts r
 	}
 }
 
-func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, opts runner.RunOpts) error {
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", alert.Trigger.Pipe)
+func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, trigger config.Trigger, opts runner.RunOpts) error {
+	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", trigger.Pipe)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("pipe: stdout pipe: %w", err)
@@ -55,12 +55,15 @@ func (s *Scheduler) runPipeOnce(ctx context.Context, alert *config.Alert, opts r
 	var buf []byte
 	var resultCh <-chan runner.Result
 
+	triggerType := detectTriggerType(trigger)
+
 	fire := func() {
 		input := make([]byte, len(buf))
 		copy(input, buf)
 		buf = buf[:0]
 		callOpts := opts
 		callOpts.Stdin = input
+		callOpts.TriggerType = triggerType
 		resultCh = s.runner.RunAlertOpts(ctx, alert, callOpts)
 	}
 

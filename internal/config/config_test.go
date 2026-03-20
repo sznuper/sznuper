@@ -6,69 +6,32 @@ import (
 	"testing"
 )
 
-func TestLoadExampleConfig(t *testing.T) {
-	t.Setenv("TELEGRAM_TOKEN", "bot123:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw")
-	t.Setenv("TELEGRAM_CHAT_ID", "-100123456789")
-
-	root := findProjectRoot(t)
-	cfg, err := Load(filepath.Join(root, "config.example.yml"))
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+func TestMultipleTriggers(t *testing.T) {
+	yml := `
+alerts:
+  - name: test
+    healthcheck: file://test
+    triggers:
+      - interval: 30s
+      - cron: "0 */6 * * *"
+      - watch: /var/log/auth.log
+    template: "test"
+    notify:
+      - log
+`
+	cfg := loadFromString(t, yml)
+	triggers := cfg.Alerts[0].Triggers
+	if len(triggers) != 3 {
+		t.Fatalf("triggers count = %d, want 3", len(triggers))
 	}
-
-	if cfg.Globals["hostname"] != "vps-01" {
-		t.Errorf("globals[hostname] = %q, want %q", cfg.Globals["hostname"], "vps-01")
+	if triggers[0].Interval != "30s" {
+		t.Errorf("triggers[0].Interval = %q, want %q", triggers[0].Interval, "30s")
 	}
-
-	if cfg.Options.HealthchecksDir == "" {
-		t.Error("options.healthchecks_dir is empty")
+	if triggers[1].Cron != "0 */6 * * *" {
+		t.Errorf("triggers[1].Cron = %q, want %q", triggers[1].Cron, "0 */6 * * *")
 	}
-
-	// envsubst in service URL
-	svc, ok := cfg.Services["telegram"]
-	if !ok {
-		t.Fatal("missing service 'telegram'")
-	}
-	if want := "telegram://bot123:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw@telegram"; svc.URL != want {
-		t.Errorf("service url = %q, want %q", svc.URL, want)
-	}
-	if svc.Params["chats"] != "-100123456789" {
-		t.Errorf("service params[chats] = %q, want %q", svc.Params["chats"], "-100123456789")
-	}
-
-	if len(cfg.Alerts) != 1 {
-		t.Fatalf("alerts count = %d, want 1", len(cfg.Alerts))
-	}
-	a := cfg.Alerts[0]
-	if a.Name != "disk_check_https" {
-		t.Errorf("alert name = %q, want %q", a.Name, "disk_check_https")
-	}
-	if a.Healthcheck != "https://github.com/sznuper/healthchecks/releases/download/v0.1.0/disk_usage" {
-		t.Errorf("alert healthcheck = %q, want %q", a.Healthcheck, "https://github.com/sznuper/healthchecks/releases/download/v0.1.0/disk_usage")
-	}
-	if a.Trigger.Interval == "" {
-		t.Error("trigger interval is empty")
-	}
-	if a.Timeout != "10s" {
-		t.Errorf("timeout = %q, want %q", a.Timeout, "10s")
-	}
-
-	// Cooldown
-	if a.Cooldown != "8s" {
-		t.Errorf("cooldown = %q, want %q", a.Cooldown, "8s")
-	}
-
-	// String notify
-	if len(a.Notify) != 1 || a.Notify[0].Service != "telegram" {
-		t.Errorf("notify = %v, want [telegram]", a.Notify)
-	}
-
-	// Events
-	if a.Events == nil {
-		t.Fatal("events is nil")
-	}
-	if len(a.Events.Healthy) != 1 || a.Events.Healthy[0] != "ok" {
-		t.Errorf("events.healthy = %v, want [ok]", a.Events.Healthy)
+	if triggers[2].Watch != "/var/log/auth.log" {
+		t.Errorf("triggers[2].Watch = %q, want %q", triggers[2].Watch, "/var/log/auth.log")
 	}
 }
 
@@ -77,8 +40,8 @@ func TestCooldownSimple(t *testing.T) {
 alerts:
   - name: test
     healthcheck: file://test
-    trigger:
-      interval: 1m
+    triggers:
+      - interval: 1m
     cooldown: 10m
     template: "test"
     notify:
@@ -96,8 +59,8 @@ alerts:
   - name: test
     healthcheck: https://example.com/check
     sha256: false
-    trigger:
-      interval: 1h
+    triggers:
+      - interval: 1h
     template: "test"
     notify:
       - log
@@ -118,8 +81,8 @@ alerts:
   - name: test
     healthcheck: https://example.com/check
     sha256: a1b2c3d4e5f6
-    trigger:
-      interval: 1h
+    triggers:
+      - interval: 1h
     template: "test"
     notify:
       - log
@@ -139,8 +102,8 @@ func TestNotifyStringAndObjectWithParams(t *testing.T) {
 alerts:
   - name: test
     healthcheck: file://test
-    trigger:
-      interval: 1m
+    triggers:
+      - interval: 1m
     template: "test"
     notify:
       - logfile
@@ -174,8 +137,8 @@ func TestEventsConfig(t *testing.T) {
 alerts:
   - name: test
     healthcheck: file://test
-    trigger:
-      interval: 1m
+    triggers:
+      - interval: 1m
     template: "default"
     cooldown: 5m
     notify:
@@ -351,22 +314,4 @@ func loadFromString(t *testing.T, yml string) *Config {
 		t.Fatalf("Load: %v", err)
 	}
 	return cfg
-}
-
-func findProjectRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("could not find project root (go.mod)")
-		}
-		dir = parent
-	}
 }

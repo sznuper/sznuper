@@ -11,8 +11,8 @@ import (
 	"github.com/sznuper/sznuper/internal/runner"
 )
 
-func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, opts runner.RunOpts) {
-	path := alert.Trigger.Watch
+func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, trigger config.Trigger, opts runner.RunOpts) {
+	path := trigger.Watch
 	base := filepath.Base(path)
 	dir := filepath.Dir(path)
 
@@ -38,12 +38,15 @@ func (s *Scheduler) runWatchLoop(ctx context.Context, alert *config.Alert, opts 
 	var buf []byte
 	var resultCh <-chan runner.Result
 
+	triggerType := detectTriggerType(trigger)
+
 	fire := func() {
 		input := make([]byte, len(buf))
 		copy(input, buf)
 		buf = buf[:0]
 		callOpts := opts
 		callOpts.Stdin = input
+		callOpts.TriggerType = triggerType
 		resultCh = s.runner.RunAlertOpts(ctx, alert, callOpts)
 	}
 

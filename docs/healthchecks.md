@@ -68,8 +68,8 @@ Behavior:
 ```yaml
 - name: disk_check
   healthcheck: file://disk_usage
-  trigger:
-    interval: 30s
+  triggers:
+    - interval: 30s
 ```
 
 ```mermaid
@@ -89,8 +89,8 @@ flowchart TD
 - name: disk_check
   healthcheck: file://disk_usage
   sha256: b7e4f2c8d1a9...
-  trigger:
-    interval: 30s
+  triggers:
+    - interval: 30s
 ```
 
 ```mermaid
@@ -113,8 +113,8 @@ flowchart TD
 - name: ssl_expiry
   healthcheck: https://github.com/sznuper/healthchecks/releases/download/v1.0.0/ssl_check
   sha256: a1b2c3d4e5f6...
-  trigger:
-    interval: 6h
+  triggers:
+    - interval: 6h
 ```
 
 ```mermaid
@@ -139,8 +139,8 @@ flowchart TD
 - name: experimental_check
   healthcheck: https://example.com/beta_check.sh
   sha256: false
-  trigger:
-    interval: 1h
+  triggers:
+    - interval: 1h
 ```
 
 **Phase 1: Daemon start / validate**
@@ -196,8 +196,8 @@ alerts:
   - name: disk_check
     healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/disk_usage
     sha256: a1b2c3d4e5f6...
-    trigger:
-      interval: 30s
+    triggers:
+      - interval: 30s
     args:
       threshold_warn_percent: 80
       threshold_crit_percent: 95

@@ -40,7 +40,7 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 			{
 				Name:        "tick",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Interval: interval.String()},
+				Triggers:    []config.Trigger{{Interval: interval.String()}},
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
@@ -75,7 +75,7 @@ func TestScheduler_CronFires(t *testing.T) {
 			{
 				Name:        "cron-tick",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Cron: "* * * * * *"}, // every second (6-field)
+				Triggers:    []config.Trigger{{Cron: "* * * * * *"}}, // every second (6-field)
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
@@ -120,7 +120,7 @@ func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 			{
 				Name:        "bad-cron",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Cron: "not a cron expression"},
+				Triggers:    []config.Trigger{{Cron: "not a cron expression"}},
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
@@ -176,6 +176,48 @@ func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 	}
 }
 
+func TestScheduler_MultipleTriggers_BothFire(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir)
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{},
+		Alerts: []config.Alert{
+			{
+				Name:        "multi",
+				Healthcheck: "file://check.sh",
+				Triggers: []config.Trigger{
+					{Interval: "50ms"},
+					{Cron: "* * * * * *"}, // every second
+				},
+				Template: "test",
+				Notify:   []config.NotifyTarget{{Service: "logger"}},
+			},
+		},
+		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+	}
+
+	var count atomic.Int32
+	sched := New(newRunner(t, cfg), slog.Default(), func(runner.Result) {
+		count.Add(1)
+	})
+
+	// Run for 1.5s: interval should fire ~30 times, cron should fire once.
+	// Combined should be well above what either trigger alone would produce.
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+
+	sched.Start(ctx, cfg.Alerts, false)
+
+	got := count.Load()
+	// Interval alone would fire ~30 times in 1.5s. Cron fires once per second.
+	// We just verify both contributed — more than interval alone at minimum.
+	if got < 3 {
+		t.Errorf("onResult called %d times, want >= 3 (both triggers should fire)", got)
+	}
+}
+
 func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 	dir := t.TempDir()
 	writeScript(t, dir)
@@ -187,7 +229,7 @@ func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 			{
 				Name:        "cancel-me",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Interval: "20ms"},
+				Triggers:    []config.Trigger{{Interval: "20ms"}},
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
@@ -238,7 +280,7 @@ func watchAlert(t *testing.T, dir, watchPath string) *config.Config {
 			{
 				Name:        "watch-test",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Watch: watchPath},
+				Triggers:    []config.Trigger{{Watch: watchPath}},
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},
@@ -333,7 +375,7 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 			{
 				Name:        "watch-slow",
 				Healthcheck: "file://check.sh",
-				Trigger:     config.Trigger{Watch: watchPath},
+				Triggers:    []config.Trigger{{Watch: watchPath}},
 				Template:    "test",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 			},

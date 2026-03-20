@@ -76,8 +76,8 @@ services:
 alerts:
   - name: disk_check
     healthcheck: file://disk_usage
-    trigger:
-      interval: 30s
+    triggers:
+      - interval: 30s
     args:
       threshold_warn_percent: 80
       threshold_crit_percent: 95
@@ -93,8 +93,8 @@ alerts:
   - name: ssl_expiry
     healthcheck: https://raw.githubusercontent.com/sznuper/healthchecks/v1.0.0/ssl_check
     sha256: a1b2c3d4e5f6...              # required for https
-    trigger:
-      interval: 6h
+    triggers:
+      - interval: 6h
     template: "[{{event.type | upper}}] {{globals.hostname}}: Certificate for {{event.domain}} expires in {{event.days_left}} days"
     notify:
       - telegram
@@ -102,16 +102,16 @@ alerts:
   - name: experimental_check
     healthcheck: https://example.com/beta_check.sh
     sha256: false                         # explicit opt-out, re-fetched on daemon start
-    trigger:
-      interval: 1h
+    triggers:
+      - interval: 1h
     template: "[{{event.type | upper}}] {{globals.hostname}}: {{event.message}}"
     notify:
       - logfile
 
   - name: ssh_journal
     healthcheck: file://ssh_journal
-    trigger:
-      pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+    triggers:
+      - pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     cooldown: 5m
     template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
     notify:
@@ -125,8 +125,8 @@ alerts:
   # Per-alert service override with per-event-type params
   - name: postgres_down
     healthcheck: file://systemd_unit
-    trigger:
-      interval: 15s
+    triggers:
+      - interval: 15s
     args:
       units: postgresql
     template: "[{{event.type | upper}}] {{globals.hostname}}: Unit {{event.unit}} is {{event.state}}"

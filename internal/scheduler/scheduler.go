@@ -33,7 +33,7 @@ func New(r *runner.Runner, logger *slog.Logger, onResult OnResult) *Scheduler {
 func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun bool) {
 	var lifecycle, regular []config.Alert
 	for _, a := range alerts {
-		if a.Trigger.Lifecycle {
+		if hasLifecycleTrigger(a.Triggers) {
 			lifecycle = append(lifecycle, a)
 		} else {
 			regular = append(regular, a)
@@ -83,8 +83,29 @@ func (s *Scheduler) fireLifecycle(ctx context.Context, alerts []config.Alert, ev
 func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRun bool) {
 	opts := buildRunOpts(alert, dryRun)
 
+	if len(alert.Triggers) == 0 {
+		s.logger.Warn("skipping: no triggers configured", "alert", alert.Name)
+		return
+	}
+
+	var wg sync.WaitGroup
+	for i := range alert.Triggers {
+		wg.Add(1)
+		go func(trigger config.Trigger) {
+			defer wg.Done()
+			s.runTrigger(ctx, alert, trigger, opts)
+		}(alert.Triggers[i])
+	}
+	wg.Wait()
+}
+
+func (s *Scheduler) runTrigger(ctx context.Context, alert *config.Alert, trigger config.Trigger, opts runner.RunOpts) {
+	triggerType := detectTriggerType(trigger)
+
 	fire := func() {
-		for result := range s.runner.RunAlertOpts(ctx, alert, opts) {
+		callOpts := opts
+		callOpts.TriggerType = triggerType
+		for result := range s.runner.RunAlertOpts(ctx, alert, callOpts) {
 			if s.onResult != nil {
 				s.onResult(result)
 			}
@@ -92,10 +113,10 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 	}
 
 	switch {
-	case alert.Trigger.Interval != "":
-		interval, err := time.ParseDuration(alert.Trigger.Interval)
+	case trigger.Interval != "":
+		interval, err := time.ParseDuration(trigger.Interval)
 		if err != nil || interval <= 0 {
-			s.logger.Warn("skipping: invalid interval", "alert", alert.Name, "interval", alert.Trigger.Interval)
+			s.logger.Warn("skipping: invalid interval", "alert", alert.Name, "interval", trigger.Interval)
 			return
 		}
 		fire() // immediate first run
@@ -109,14 +130,38 @@ func (s *Scheduler) runAlertLoop(ctx context.Context, alert *config.Alert, dryRu
 				fire()
 			}
 		}
-	case alert.Trigger.Cron != "":
-		s.runCronLoop(ctx, alert.Name, alert.Trigger.Cron, fire)
-	case alert.Trigger.Watch != "":
-		s.runWatchLoop(ctx, alert, opts)
-	case alert.Trigger.Pipe != "":
-		s.runPipeLoop(ctx, alert, opts)
+	case trigger.Cron != "":
+		s.runCronLoop(ctx, alert.Name, trigger.Cron, fire)
+	case trigger.Watch != "":
+		s.runWatchLoop(ctx, alert, trigger, opts)
+	case trigger.Pipe != "":
+		s.runPipeLoop(ctx, alert, trigger, opts)
 	default:
-		s.logger.Warn("skipping: no trigger configured", "alert", alert.Name)
+		s.logger.Warn("skipping: empty trigger", "alert", alert.Name)
+	}
+}
+
+func hasLifecycleTrigger(triggers []config.Trigger) bool {
+	for _, t := range triggers {
+		if t.Lifecycle {
+			return true
+		}
+	}
+	return false
+}
+
+func detectTriggerType(t config.Trigger) string {
+	switch {
+	case t.Lifecycle:
+		return "lifecycle"
+	case t.Pipe != "":
+		return "pipe"
+	case t.Watch != "":
+		return "watch"
+	case t.Cron != "":
+		return "cron"
+	default:
+		return "interval"
 	}
 }
 

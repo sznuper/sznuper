@@ -30,7 +30,6 @@ All Go code has been migrated to the v2 event-based protocol. No v1 protocol cod
 
 | File | Status |
 |------|--------|
-| `config.example.yml` | Updated. Uses `{{event.*}}` templates, `events.healthy: [ok]`, simple cooldown string. |
 | `internal/initcmd/defaults/base.yml` | Updated. All 4 alerts (lifecycle, disk, memory, cpu) use v2 format. |
 | `internal/initcmd/defaults/systemd.yml` | Updated. ssh_journal uses `events.override` + `on_unmatched: drop`. |
 

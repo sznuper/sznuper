@@ -81,12 +81,12 @@ alerts:
   - name: <string>             # required
     healthcheck: <uri>         # required (file://, https://, builtin://)
     sha256: <hash> | false     # optional
-    trigger:                   # required (exactly one)
-      interval: <duration>
-      cron: <expression>
-      watch: <file path>
-      pipe: <shell command>
-      lifecycle: <bool>
+    triggers:                  # required (one or more)
+      - interval: <duration>
+      - cron: <expression>
+      - watch: <file path>
+      - pipe: <shell command>
+      - lifecycle: <bool>
     timeout: <duration>        # optional
     args:                      # optional — passed as HEALTHCHECK_ARG_* env vars
       key: value
@@ -325,8 +325,8 @@ alerts:
   - name: disk_usage
     healthcheck: https://github.com/sznuper/healthchecks/.../disk_usage
     sha256: abc123...
-    trigger:
-      interval: 5m
+    triggers:
+      - interval: 5m
     args:
       mount: /
       threshold_warn_percent: 80
@@ -364,8 +364,8 @@ alerts:
   - name: ssh_journal
     healthcheck: https://github.com/sznuper/healthchecks/.../ssh_journal
     sha256: def456...
-    trigger:
-      pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
+    triggers:
+      - pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     template: "SSH {{event.type}} from {{event.host}} as {{event.user}}"
     cooldown: 5m
     notify:
@@ -412,8 +412,8 @@ Behavior:
 alerts:
   - name: lifecycle
     healthcheck: builtin://lifecycle
-    trigger:
-      lifecycle: true
+    triggers:
+      - lifecycle: true
     template: "sznuper {{event.type}} ({{event.alerts}} alerts configured)"
     notify:
       - telegram

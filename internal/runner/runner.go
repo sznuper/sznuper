@@ -66,6 +66,7 @@ type RunOpts struct {
 	Cooldown      *cooldown.State
 	State         *AlertState // state machine (nil = no state tracking)
 	Stdin         []byte
+	TriggerType   string            // e.g. "interval", "cron", "watch", "pipe", "lifecycle"
 	BuiltinParams map[string]string // params for builtin:// healthchecks
 }
 
@@ -130,7 +131,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		execResult, err = healthcheck.Exec(ctx, healthcheck.ExecOpts{
 			Path:        resolved.Path,
 			Timeout:     timeout,
-			TriggerType: detectTriggerType(alert.Trigger),
+			TriggerType: opts.TriggerType,
 			Args:        alert.Args,
 			Stdin:       opts.Stdin,
 		})
@@ -338,21 +339,6 @@ func parseCooldownValue(s string) time.Duration {
 	}
 	d, _ := time.ParseDuration(s)
 	return d
-}
-
-func detectTriggerType(t config.Trigger) string {
-	switch {
-	case t.Lifecycle:
-		return "lifecycle"
-	case t.Pipe != "":
-		return "pipe"
-	case t.Watch != "":
-		return "watch"
-	case t.Cron != "":
-		return "cron"
-	default:
-		return "interval"
-	}
 }
 
 func mapNotifyRefs(targets []config.NotifyTarget) []notify.NotifyRef {

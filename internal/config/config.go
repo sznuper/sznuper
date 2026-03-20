@@ -32,7 +32,7 @@ type Alert struct {
 	Name        string         `yaml:"name"        validate:"required"`
 	Healthcheck string         `yaml:"healthcheck" validate:"required"`
 	SHA256      SHA256         `yaml:"sha256,omitempty"`
-	Trigger     Trigger        `yaml:"trigger"`
+	Triggers    []Trigger      `yaml:"triggers"`
 	Timeout     string         `yaml:"timeout,omitempty"`
 	Args        map[string]any `yaml:"args,omitempty"`
 	Template    string         `yaml:"template"    validate:"required"`
