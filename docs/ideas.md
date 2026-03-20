@@ -1,16 +1,5 @@
 # Ideas
 
-## `builtin://ok`
-
-A built-in healthcheck that always emits a single `type=ok` event. Useful for testing notification pipelines, validating config, or as a minimal smoke test.
-
-```
---- event
-type=ok
-```
-
-For now, keep it explicit — require `healthcheck: builtin://ok` in the config rather than making it a fallback when `healthcheck` is omitted.
-
 ## Multiple triggers per alert
 
 Currently each alert has a single `trigger` field (one of `interval`, `cron`, `watch`, `pipe`, or `lifecycle`). Change this to a list so an alert can have multiple triggers — e.g. multiple crons, or an interval combined with a watch.

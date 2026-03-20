@@ -45,7 +45,7 @@ Add the script's sha256 hash, or set sha256: false to skip verification.
 Synthetic healthchecks handled directly by the daemon — no external process is spawned.
 
 - `builtin://lifecycle` — emits a startup/shutdown event with the configured alert count. Used internally by the default `sznuper_lifecycle` alert.
-- `builtin://ok` — always emits a single `type=ok` event. Useful for testing notifications, validating config, or as a minimal "alive" signal.
+- `builtin://ok` — always emits a single `type=ok` event. Useful for alerts that just need to run on a schedule (cron jobs, periodic tasks) without any actual verification — the healthcheck always succeeds, so the notification always fires. Also handy for testing notification pipelines or validating config.
 
 Behavior:
 - No file resolution, downloading, or caching. The daemon generates the output in-process.
