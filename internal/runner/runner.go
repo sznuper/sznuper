@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -133,6 +134,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 			Path:        resolved.Path,
 			Timeout:     timeout,
 			TriggerType: opts.TriggerType,
+			AlertName:   alert.Name,
 			Args:        alert.Args,
 			Stdin:       opts.Stdin,
 		})
@@ -170,7 +172,6 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		result := base
 		result.EventType = ev.Type
 		result.Fields = ev.Fields
-		result.Arrays = ev.Arrays
 
 		// a. Resolve config: find matching override or apply on_unmatched rule.
 		var override *config.EventOverride
@@ -250,7 +251,6 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 			r.cfg.Globals,
 			alert.Name,
 			ev.Fields,
-			ev.Arrays,
 			alert.Args,
 		)
 
@@ -313,11 +313,11 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 				}
 				seCtx, seCancel := context.WithTimeout(ctx, seTimeout)
 
-				seEnv := make([]string, len(result.Env), len(result.Env)+3)
+				seEnv := make([]string, len(result.Env), len(result.Env)+len(ev.Fields))
 				copy(seEnv, result.Env)
-				seEnv = append(seEnv, "SZNUPER_ALERT_NAME="+alert.Name)
-				seEnv = append(seEnv, "SZNUPER_EVENT_TYPE="+ev.Type)
-				seEnv = append(seEnv, "HEALTHCHECK_EVENT="+ev.Raw)
+				for k, v := range ev.Fields {
+					seEnv = append(seEnv, "HEALTHCHECK_EVENT_"+strings.ToUpper(k)+"="+v)
+				}
 
 				seResults := sideeffect.ExecAll(seCtx, alert.SideEffects, seEnv)
 				seCancel()

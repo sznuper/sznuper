@@ -225,6 +225,7 @@ Daemon metadata (set by the daemon):
 | Variable | Description | Set for |
 |---|---|---|
 | `HEALTHCHECK_TRIGGER` | `"interval"`, `"cron"`, `"watch"`, or `"pipe"` | always |
+| `HEALTHCHECK_ALERT_NAME` | Name of the alert being executed | always |
 | `HEALTHCHECK_FILE` | Watched file path | watch only [TODO] |
 | `HEALTHCHECK_LINE_COUNT` | Number of new lines | watch only [TODO] |
 
@@ -282,7 +283,7 @@ timestamp=2026-03-14T01:08:00Z
 
 Each event is processed independently through the pipeline: config resolution → state machine → cooldown → template → notify.
 
-**Array values** are supported: `hosts=[1.2.3.4, 5.6.7.8]` (parsed as typed arrays).
+Values are always stored as plain strings in event fields.
 
 #### Template access
 
@@ -364,7 +365,7 @@ healthchecks/
 ### Example: interval healthcheck invocation
 
 ```
-HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
+HEALTHCHECK_TRIGGER=interval HEALTHCHECK_ALERT_NAME=disk_check HEALTHCHECK_ARG_THRESHOLD_WARN_PERCENT=80 HEALTHCHECK_ARG_MOUNT=/ /etc/sznuper/healthchecks/disk_usage
 ```
 
 ### Example: watch healthcheck invocation

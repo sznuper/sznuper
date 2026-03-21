@@ -156,8 +156,7 @@ alerts:
 
 **Behavior:**
 - Commands run via `/bin/sh -c` (plain shell commands, not URI schemes)
-- Env vars: same as healthcheck (`HEALTHCHECK_TRIGGER`, `HEALTHCHECK_ARG_*`) plus `SZNUPER_ALERT_NAME`, `SZNUPER_EVENT_TYPE`, and `HEALTHCHECK_EVENT` (the full raw event block)
-- Stdin is not used — event data is in `HEALTHCHECK_EVENT`, so your command's stdin remains free
+- Env vars: inherits the full healthcheck env (`HEALTHCHECK_TRIGGER`, `HEALTHCHECK_ALERT_NAME`, `HEALTHCHECK_ARG_*`) plus `HEALTHCHECK_EVENT_<KEY>=<value>` for each parsed event field (e.g. `HEALTHCHECK_EVENT_TYPE=ok`, `HEALTHCHECK_EVENT_USAGE=84`)
 - Run in parallel after notifications are sent
 - Timeout: inherits the alert's `timeout`, defaults to 30s
 - Failures are logged at warn level but do not fail the alert (non-fatal)

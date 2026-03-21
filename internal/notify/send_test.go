@@ -13,7 +13,6 @@ func TestResolveTargets_Basic(t *testing.T) {
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
 		map[string]string{"type": "high_usage", "usage": "84"},
-		nil,
 		map[string]any{"mount": "/"},
 	)
 
@@ -46,7 +45,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 		},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"type": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `test`, data)
 	if err != nil {
@@ -71,7 +70,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 		},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "alert",
-		map[string]string{"type": "critical_usage"}, nil, nil)
+		map[string]string{"type": "critical_usage"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `body`, data)
 	if err != nil {
@@ -86,7 +85,7 @@ func TestResolveTargets_UnknownService(t *testing.T) {
 	services := map[string]ServiceDef{}
 	refs := []NotifyRef{{ServiceName: "nonexistent"}}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"type": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil)
 
 	_, err := ResolveTargets(refs, services, `test`, data)
 	if err == nil {
@@ -104,7 +103,7 @@ func TestResolveTargets_MultipleTargets(t *testing.T) {
 		{ServiceName: "slack"},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
-		map[string]string{"type": "ok"}, nil, nil)
+		map[string]string{"type": "ok"}, nil)
 
 	targets, err := ResolveTargets(refs, services, `msg`, data)
 	if err != nil {

@@ -26,6 +26,7 @@ type ExecOpts struct {
 	Path        string
 	Timeout     time.Duration
 	TriggerType string
+	AlertName   string
 	Args        map[string]any
 	Stdin       []byte
 }
@@ -100,6 +101,10 @@ func isAPEBinary(path string) (bool, error) {
 func buildEnv(opts ExecOpts) []string {
 	env := []string{
 		"HEALTHCHECK_TRIGGER=" + opts.TriggerType,
+	}
+
+	if opts.AlertName != "" {
+		env = append(env, "HEALTHCHECK_ALERT_NAME="+opts.AlertName)
 	}
 
 	for k, v := range opts.Args {

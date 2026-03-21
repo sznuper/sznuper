@@ -179,7 +179,7 @@ func TestRunAlert_SideEffectsRun(t *testing.T) {
 				Template:    "msg",
 				Notify:      []config.NotifyTarget{{Service: "logger"}},
 				SideEffects: []string{
-					fmt.Sprintf("echo \"$HEALTHCHECK_EVENT\" > %s", outFile),
+					fmt.Sprintf("echo \"$HEALTHCHECK_EVENT_TYPE:$HEALTHCHECK_EVENT_USAGE\" > %s", outFile),
 				},
 			},
 		},
@@ -197,13 +197,13 @@ func TestRunAlert_SideEffectsRun(t *testing.T) {
 		t.Errorf("SideEffectsRun = %d, want 1", result.SideEffectsRun)
 	}
 
-	// Verify the side effect received the raw event block via HEALTHCHECK_EVENT.
+	// Verify the side effect received per-field env vars.
 	data, err := os.ReadFile(outFile)
 	if err != nil {
 		t.Fatalf("reading side effect output: %v", err)
 	}
-	if !strings.Contains(string(data), "type=ok") {
-		t.Errorf("side effect output = %q, want to contain 'type=ok'", string(data))
+	if !strings.Contains(string(data), "ok:42") {
+		t.Errorf("side effect output = %q, want to contain 'ok:42'", string(data))
 	}
 }
 

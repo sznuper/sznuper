@@ -71,6 +71,7 @@ func TestExec_EnvArgs(t *testing.T) {
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
 		TriggerType: "cron",
+		AlertName:   "disk_check",
 		Args:        map[string]any{"mount": "/data"},
 	})
 	if err != nil {
@@ -125,6 +126,7 @@ func TestFormatArg(t *testing.T) {
 func TestBuildEnv(t *testing.T) {
 	env := buildEnv(ExecOpts{
 		TriggerType: "cron",
+		AlertName:   "disk_check",
 		Args: map[string]any{
 			"mount":                  "/data",
 			"threshold_warn_percent": float64(80.0),
@@ -137,6 +139,7 @@ func TestBuildEnv(t *testing.T) {
 	sort.Strings(env)
 
 	want := []string{
+		"HEALTHCHECK_ALERT_NAME=disk_check",
 		"HEALTHCHECK_ARG_COUNT=42",
 		"HEALTHCHECK_ARG_MOUNT=/data",
 		"HEALTHCHECK_ARG_RAW=true",
@@ -161,7 +164,7 @@ func TestBuildEnv_NoArgs(t *testing.T) {
 		t.Fatalf("got %d env vars, want 1: %v", len(env), env)
 	}
 	if env[0] != "HEALTHCHECK_TRIGGER=interval" {
-		t.Errorf("env[0] = %q, want HEALTHCHECK_TRIGGER=interval", env[0])
+		t.Errorf("env[0] = %q, want %q", env[0], "HEALTHCHECK_TRIGGER=interval")
 	}
 }
 
@@ -209,13 +212,14 @@ func TestExec_EnvInResult(t *testing.T) {
 	result, err := Exec(context.Background(), ExecOpts{
 		Path:        script,
 		TriggerType: "interval",
+		AlertName:   "disk_check",
 		Args:        map[string]any{"mount": "/"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Env) != 2 {
-		t.Fatalf("got %d env vars, want 2: %v", len(result.Env), result.Env)
+	if len(result.Env) != 3 {
+		t.Fatalf("got %d env vars, want 3: %v", len(result.Env), result.Env)
 	}
 
 	found := false

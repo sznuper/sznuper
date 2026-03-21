@@ -9,7 +9,6 @@ type Result struct {
 	HealthcheckPath string
 	EventType       string            // the event's type field
 	Fields          map[string]string // parsed scalar pairs
-	Arrays          map[string]any    // parsed array fields ([]string, []int64, or []bool)
 	Rendered        map[string]string // service name -> rendered message
 	Notified        []string          // services notified (or would-notify)
 	Env             []string

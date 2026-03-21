@@ -8,8 +8,8 @@ import (
 )
 
 func TestExec_EnvPassed(t *testing.T) {
-	env := []string{"SZNUPER_ALERT_NAME=disk_check", "SZNUPER_EVENT_TYPE=high_usage"}
-	r := Exec(context.Background(), `echo "$SZNUPER_ALERT_NAME:$SZNUPER_EVENT_TYPE" >&2`, env)
+	env := []string{"HEALTHCHECK_ALERT_NAME=disk_check", "HEALTHCHECK_EVENT_TYPE=high_usage"}
+	r := Exec(context.Background(), `echo "$HEALTHCHECK_ALERT_NAME:$HEALTHCHECK_EVENT_TYPE" >&2`, env)
 	if r.Err != nil {
 		t.Fatalf("unexpected error: %v", r.Err)
 	}
@@ -20,16 +20,13 @@ func TestExec_EnvPassed(t *testing.T) {
 }
 
 func TestExec_HealthcheckEventEnv(t *testing.T) {
-	env := []string{"HEALTHCHECK_EVENT=type=ok\nusage=42"}
-	r := Exec(context.Background(), `echo "$HEALTHCHECK_EVENT" >&2`, env)
+	env := []string{"HEALTHCHECK_EVENT_TYPE=ok", "HEALTHCHECK_EVENT_USAGE=42"}
+	r := Exec(context.Background(), `echo "$HEALTHCHECK_EVENT_TYPE:$HEALTHCHECK_EVENT_USAGE" >&2`, env)
 	if r.Err != nil {
 		t.Fatalf("unexpected error: %v", r.Err)
 	}
-	if !strings.Contains(r.Stderr, "type=ok") {
-		t.Errorf("stderr = %q, want HEALTHCHECK_EVENT contents", r.Stderr)
-	}
-	if !strings.Contains(r.Stderr, "usage=42") {
-		t.Errorf("stderr = %q, want HEALTHCHECK_EVENT contents", r.Stderr)
+	if !strings.Contains(r.Stderr, "ok:42") {
+		t.Errorf("stderr = %q, want 'ok:42'", r.Stderr)
 	}
 }
 

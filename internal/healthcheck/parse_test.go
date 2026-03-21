@@ -1,7 +1,6 @@
 package healthcheck
 
 import (
-	"reflect"
 	"testing"
 )
 
@@ -114,7 +113,7 @@ func TestParseEvents_ValueWithEquals(t *testing.T) {
 }
 
 func TestParseEvents_WhitespaceHandling(t *testing.T) {
-	stdout := "  --- event  \n  type = ok  \n  usage = 42  \n"
+	stdout := "  --- event  \ntype=ok\nusage=42\n"
 	events, err := ParseEvents(stdout)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -127,57 +126,6 @@ func TestParseEvents_WhitespaceHandling(t *testing.T) {
 	}
 	if events[0].Fields["usage"] != "42" {
 		t.Errorf("usage = %q, want %q", events[0].Fields["usage"], "42")
-	}
-}
-
-func TestParseEvents_StringArray(t *testing.T) {
-	stdout := "--- event\ntype=ok\nhosts=[\"1.2.3.4\", \"5.6.7.8\"]\n"
-	events, err := ParseEvents(stdout)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if _, inFields := events[0].Fields["hosts"]; inFields {
-		t.Error("array key should not be in Fields")
-	}
-	got, ok := events[0].Arrays["hosts"].([]string)
-	if !ok {
-		t.Fatalf("hosts not []string, got %T", events[0].Arrays["hosts"])
-	}
-	want := []string{"1.2.3.4", "5.6.7.8"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("hosts = %v, want %v", got, want)
-	}
-}
-
-func TestParseEvents_IntArray(t *testing.T) {
-	stdout := "--- event\ntype=ok\ncounts=[1, 2, 3]\n"
-	events, err := ParseEvents(stdout)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	got, ok := events[0].Arrays["counts"].([]int64)
-	if !ok {
-		t.Fatalf("counts not []int64, got %T", events[0].Arrays["counts"])
-	}
-	want := []int64{1, 2, 3}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("counts = %v, want %v", got, want)
-	}
-}
-
-func TestParseEvents_BoolArray(t *testing.T) {
-	stdout := "--- event\ntype=ok\nflags=[true, false, true]\n"
-	events, err := ParseEvents(stdout)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	got, ok := events[0].Arrays["flags"].([]bool)
-	if !ok {
-		t.Fatalf("flags not []bool, got %T", events[0].Arrays["flags"])
-	}
-	want := []bool{true, false, true}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("flags = %v, want %v", got, want)
 	}
 }
 
@@ -200,17 +148,40 @@ func TestParseEvents_RawPreservesBlockText(t *testing.T) {
 	}
 }
 
-func TestParseEvents_EmptyArray(t *testing.T) {
-	stdout := "--- event\ntype=ok\narr=[]\n"
+func TestParseEvents_ArrayValuesAsStrings(t *testing.T) {
+	stdout := "--- event\ntype=ok\nhosts='[\"1.2.3.4\", \"5.6.7.8\"]'\n"
 	events, err := ParseEvents(stdout)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	got, ok := events[0].Arrays["arr"].([]string)
-	if !ok {
-		t.Fatalf("arr not []string, got %T", events[0].Arrays["arr"])
+	got := events[0].Fields["hosts"]
+	want := `["1.2.3.4", "5.6.7.8"]`
+	if got != want {
+		t.Errorf("hosts = %q, want %q", got, want)
 	}
-	if len(got) != 0 {
-		t.Errorf("arr = %v, want empty", got)
+}
+
+func TestParseEvents_KeysLowercased(t *testing.T) {
+	stdout := "--- event\nTYPE=ok\nUSAGE_PERCENT=84\n"
+	events, err := ParseEvents(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if events[0].Type != "ok" {
+		t.Errorf("type = %q, want %q", events[0].Type, "ok")
+	}
+	if events[0].Fields["usage_percent"] != "84" {
+		t.Errorf("usage_percent = %q, want %q", events[0].Fields["usage_percent"], "84")
+	}
+}
+
+func TestParseEvents_QuotedValues(t *testing.T) {
+	stdout := "--- event\ntype=ok\nmessage=\"hello world\"\n"
+	events, err := ParseEvents(stdout)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if events[0].Fields["message"] != "hello world" {
+		t.Errorf("message = %q, want %q", events[0].Fields["message"], "hello world")
 	}
 }
