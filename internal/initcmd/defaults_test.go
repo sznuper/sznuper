@@ -1,6 +1,8 @@
 package initcmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/sznuper/sznuper/internal/config"
@@ -37,8 +39,10 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("DefaultConfig() error: %v", err)
 	}
 
-	if len(cfg.Alerts) < 3 {
-		t.Errorf("expected at least 3 alerts, got %d", len(cfg.Alerts))
+	// Exact count is system-dependent (overlays check /proc/meminfo, /proc/stat, systemctl).
+	// On Linux: lifecycle + disk + memory + cpu = 4 minimum; with systemd: 5.
+	if len(cfg.Alerts) < 2 {
+		t.Errorf("expected at least 2 alerts (lifecycle + disk), got %d", len(cfg.Alerts))
 	}
 }
 
@@ -74,5 +78,21 @@ func TestMergeConfig(t *testing.T) {
 	}
 	if base.Alerts[1].Name != "ssh_journal" {
 		t.Errorf("expected ssh_journal alert, got %s", base.Alerts[1].Name)
+	}
+}
+
+func TestFileExists(t *testing.T) {
+	// Existing file should return true.
+	tmp := filepath.Join(t.TempDir(), "exists")
+	if err := os.WriteFile(tmp, []byte("ok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !fileExists(tmp) {
+		t.Error("fileExists returned false for existing file")
+	}
+
+	// Non-existent path should return false.
+	if fileExists(filepath.Join(t.TempDir(), "nope")) {
+		t.Error("fileExists returned true for non-existent path")
 	}
 }

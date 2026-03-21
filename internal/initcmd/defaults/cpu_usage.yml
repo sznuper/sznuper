@@ -1,0 +1,15 @@
+alerts:
+  - name: cpu_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.15.0/cpu_usage
+    sha256: 8b9e4b2b4aa0e1cd3227ab20ede98a42e1442f77ac36c6d41fc12e691e8eddf5
+    triggers:
+      - interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+    cooldown: 10m
+    template: |-
+      [{{event.type | upper}}] {{globals.hostname}}:
+      CPU at {{event.usage_percent}}%
+    events:
+      healthy: [ok]

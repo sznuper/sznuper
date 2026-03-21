@@ -3,6 +3,7 @@ package initcmd
 import (
 	"embed"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/sznuper/sznuper/internal/config"
@@ -18,6 +19,9 @@ type overlay struct {
 }
 
 var overlays = []overlay{
+	{"disk_usage.yml", func() bool { return true }},
+	{"memory_usage.yml", func() bool { return fileExists("/proc/meminfo") }},
+	{"cpu_usage.yml", func() bool { return fileExists("/proc/stat") }},
 	{"systemd.yml", hasSystemd},
 }
 
@@ -63,6 +67,11 @@ func mergeConfig(base, overlay *config.Config) {
 		base.Services[k] = v
 	}
 	base.Alerts = append(base.Alerts, overlay.Alerts...)
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func hasSystemd() bool {

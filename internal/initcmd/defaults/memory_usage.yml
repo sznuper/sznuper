@@ -1,0 +1,15 @@
+alerts:
+  - name: memory_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.15.0/memory_usage
+    sha256: 3ecdb04780b3d43a78dbe1fb28d1a1526fd831c1ce93f86953e2e0708259eb6c
+    triggers:
+      - interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+    cooldown: 10m
+    template: |-
+      [{{event.type | upper}}] {{globals.hostname}}:
+      Memory at {{event.usage_percent}}% ({{event.available}} remaining)
+    events:
+      healthy: [ok]

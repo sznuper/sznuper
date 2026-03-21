@@ -1,0 +1,16 @@
+alerts:
+  - name: disk_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.15.0/disk_usage
+    sha256: 59ed70a9e09ae6e0db28355c877a579c32fafda7c7baab66b21a652cefb33f51
+    triggers:
+      - interval: 30s
+    args:
+      threshold_warn_percent: 80
+      threshold_crit_percent: 95
+      mount: /
+    cooldown: 10m
+    template: |-
+      [{{event.type | upper}}] {{globals.hostname}}:
+      Disk {{args.mount}} at {{event.usage_percent}}% ({{event.available}} remaining)
+    events:
+      healthy: [ok]
