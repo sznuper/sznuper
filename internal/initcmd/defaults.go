@@ -22,7 +22,7 @@ var overlays = []overlay{
 	{"disk_usage.yml", func() bool { return true }},
 	{"memory_usage.yml", func() bool { return fileExists("/proc/meminfo") }},
 	{"cpu_usage.yml", func() bool { return fileExists("/proc/stat") }},
-	{"systemd.yml", hasSystemd},
+	{"ssh_journal.yml", func() bool { return cmdExists("journalctl") }},
 }
 
 // DefaultConfig loads base.yml and merges all applicable overlays on top.
@@ -74,7 +74,7 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func hasSystemd() bool {
-	_, err := exec.LookPath("systemctl")
+func cmdExists(name string) bool {
+	_, err := exec.LookPath(name)
 	return err == nil
 }
