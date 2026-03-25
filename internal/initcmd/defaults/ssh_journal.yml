@@ -1,7 +1,7 @@
 alerts:
   - name: ssh_journal
-    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.17.0/ssh_journal
-    sha256: 0b4b3241007aadd0c598cc10be7867056c2abe5ded6fb97069d3da8463cc0129
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.18.0/ssh_journal
+    sha256: 6900f3c71a689bab3a7eee4110f7af23aaa2186417d5fb9f543b1eb6b273bf0f
     triggers:
       - pipe: journalctl -f --since=now SYSLOG_FACILITY=10 SYSLOG_FACILITY=4 --output=json --output-fields=MESSAGE,__REALTIME_TIMESTAMP --no-pager
     template: |-
