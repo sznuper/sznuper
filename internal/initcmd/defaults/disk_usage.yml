@@ -1,6 +1,6 @@
 alerts:
   - name: disk_usage
-    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.17.0/disk_usage
+    healthcheck: https://github.com/sznuper/healthchecks/releases/download/v0.18.0/disk_usage
     sha256: 59ed70a9e09ae6e0db28355c877a579c32fafda7c7baab66b21a652cefb33f51
     triggers:
       - interval: 30s
