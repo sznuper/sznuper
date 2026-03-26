@@ -14,6 +14,9 @@ on:
       HETZNER_SSH_KEY_NAME:
         required: true
 
+permissions:
+  contents: read
+
 concurrency:
   group: e2e-install
   cancel-in-progress: true
