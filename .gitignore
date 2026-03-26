@@ -3,6 +3,7 @@
 
 # Test
 coverage.out
+e2e/node_modules/
 
 # IDE
 .idea/
