@@ -4,7 +4,7 @@
 
 # Sznuper
 
-A lightweight server monitor that runs healthchecks and sends notifications — Discord, Slack, Telegram, Teams, and more.
+A lightweight server monitor that runs healthchecks and sends notifications. Discord, Slack, Telegram, Teams, and more.
 
 No dashboard. No database. No UI. Just a YAML config, a binary, and alerts delivered to Telegram, Slack, email, or any service supported by [Shoutrrr](https://shoutrrr.nickfedor.com/v0.14.0/services/overview/).
 
