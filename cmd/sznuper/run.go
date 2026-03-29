@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -18,7 +19,14 @@ var runCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		logger := setupLogger()
+
+		// Suppress runner log noise; printResult provides structured output.
+		// --verbose enables full debug logging for troubleshooting.
+		level := slog.LevelWarn
+		if verbose {
+			level = slog.LevelDebug
+		}
+		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 
 		cfg, err := config.Resolve(cfgFile)
 		if err != nil {
