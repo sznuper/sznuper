@@ -33,6 +33,11 @@ var validateCmd = &cobra.Command{
 			} else {
 				fmt.Printf("✓ %s (%s)\n", alert.Name, alert.Healthcheck)
 			}
+
+			for _, bad := range checkServiceRefs(alert, cfg.Services) {
+				fmt.Printf("✗ %s: unknown service %q\n", alert.Name, bad)
+				hasError = true
+			}
 		}
 
 		if hasError {
@@ -40,6 +45,27 @@ var validateCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// checkServiceRefs returns service names referenced by the alert that are
+// not defined in the services map.
+func checkServiceRefs(alert config.Alert, services map[string]config.Service) []string {
+	var bad []string
+	for _, nt := range alert.Notify {
+		if _, ok := services[nt.Service]; !ok {
+			bad = append(bad, nt.Service)
+		}
+	}
+	if alert.Events != nil {
+		for _, ov := range alert.Events.Override {
+			for _, nt := range ov.Notify {
+				if _, ok := services[nt.Service]; !ok {
+					bad = append(bad, nt.Service)
+				}
+			}
+		}
+	}
+	return bad
 }
 
 func init() {
