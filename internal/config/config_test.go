@@ -275,14 +275,15 @@ alerts:
 	}
 }
 
-func TestValidation_AlertEmptyNotify(t *testing.T) {
-	if err := loadErr(t, `
+func TestNotifyOptional(t *testing.T) {
+	cfg := loadFromString(t, `
 alerts:
   - name: test
     healthcheck: file://test
     template: "test"
-`); err == nil {
-		t.Fatal("expected error for missing notify targets")
+`)
+	if len(cfg.Alerts[0].Notify) != 0 {
+		t.Errorf("notify = %v, want empty", cfg.Alerts[0].Notify)
 	}
 }
 
