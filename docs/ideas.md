@@ -49,3 +49,27 @@ Open questions:
 ## Config hot-reload
 
 Re-read the config file when it changes on disk, without requiring a full daemon restart. Watch for file changes (e.g. inotify/fsnotify) and apply the new config at runtime — add/remove/update alerts, services, and options.
+
+## Logging overhaul (Caddy-inspired)
+
+Rethink how the daemon does logging, taking inspiration from Caddy's logging architecture. Caddy uses structured JSON logging with configurable outputs (stdout, file, network), multiple named loggers, per-logger filtering/levels, and log sampling. Worth studying how Caddy separates access logs from application logs and lets users route different log streams to different sinks.
+
+Open questions:
+- What log sinks do we need? stdout + file at minimum, network (syslog, remote) later?
+- Should logging be configurable in the sznuper config file, or only via CLI flags/env vars?
+- Structured JSON by default, or human-readable with a JSON option?
+- Per-alert log routing — e.g., send healthcheck output to a separate file from daemon logs?
+
+## Interactive healthcheck selection in `init` TUI
+
+During `sznuper init`, present users with a selectable list of healthchecks to include. Auto-detected healthchecks that pass detection would be shown pre-selected (but togglable), and ones that fail detection would be hidden entirely. This gives users more control over what ends up in the generated config instead of silently including everything that passes.
+
+Adding arbitrary `https://` healthchecks in the TUI is probably not worth it -- a single alert has too many options to configure interactively. Users already have `--from` for that.
+
+## Rename "services" to "channels"
+
+Rename the notification `services` concept to `channels` throughout the codebase and config. "Channel" is more intuitive and aligns with the terminology used by tools like Oncall/OpenClaw and similar incident management tools that have become popular.
+
+## Goreleaser
+
+Use [GoReleaser](https://goreleaser.com) to automate building and releasing sznuper binaries. Handles cross-compilation, GitHub releases, changelogs, checksums, and packaging (deb, rpm, Docker, Homebrew, etc.) from a single `.goreleaser.yml`.
