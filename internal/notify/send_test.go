@@ -5,11 +5,11 @@ import (
 )
 
 func TestResolveTargets_Basic(t *testing.T) {
-	services := map[string]ServiceDef{
+	services := map[string]ChannelDef{
 		"telegram": {URL: "telegram://token@telegram", Params: map[string]string{"chats": "123"}},
 	}
 	refs := []NotifyRef{
-		{ServiceName: "telegram"},
+		{ChannelName: "telegram"},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "disk_check",
 		map[string]string{"type": "high_usage", "usage": "84"},
@@ -32,7 +32,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 }
 
 func TestResolveTargets_ParamMerge(t *testing.T) {
-	services := map[string]ServiceDef{
+	services := map[string]ChannelDef{
 		"telegram": {
 			URL:    "telegram://token@telegram",
 			Params: map[string]string{"chats": "123", "parsemode": "HTML"},
@@ -40,7 +40,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 	}
 	refs := []NotifyRef{
 		{
-			ServiceName: "telegram",
+			ChannelName: "telegram",
 			Params:      map[string]string{"parsemode": "MarkdownV2"},
 		},
 	}
@@ -60,12 +60,12 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 }
 
 func TestResolveTargets_TemplateInParams(t *testing.T) {
-	services := map[string]ServiceDef{
+	services := map[string]ChannelDef{
 		"email": {URL: "smtp://user:pass@host"},
 	}
 	refs := []NotifyRef{
 		{
-			ServiceName: "email",
+			ChannelName: "email",
 			Params:      map[string]string{"subject": `[{{event.type | upper}}] {{globals.hostname}}`},
 		},
 	}
@@ -82,8 +82,8 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 }
 
 func TestResolveTargets_UnknownService(t *testing.T) {
-	services := map[string]ServiceDef{}
-	refs := []NotifyRef{{ServiceName: "nonexistent"}}
+	services := map[string]ChannelDef{}
+	refs := []NotifyRef{{ChannelName: "nonexistent"}}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"type": "ok"}, nil)
 
@@ -94,13 +94,13 @@ func TestResolveTargets_UnknownService(t *testing.T) {
 }
 
 func TestResolveTargets_MultipleTargets(t *testing.T) {
-	services := map[string]ServiceDef{
+	services := map[string]ChannelDef{
 		"telegram": {URL: "telegram://token@telegram"},
 		"slack":    {URL: "slack://token-a/token-b/token-c"},
 	}
 	refs := []NotifyRef{
-		{ServiceName: "telegram"},
-		{ServiceName: "slack"},
+		{ChannelName: "telegram"},
+		{ChannelName: "slack"},
 	}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"type": "ok"}, nil)

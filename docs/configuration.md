@@ -56,8 +56,8 @@ options:
 globals:
   hostname: vps-01                       # optional, defaults to system hostname
 
-# Notification services (Shoutrrr URLs with params)
-services:
+# Notification channels (Shoutrrr URLs with params)
+channels:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
     params:
@@ -124,7 +124,7 @@ alerts:
         login: {}
         logout: {}
 
-  # Per-alert service override with per-event-type params
+  # Per-alert channel override with per-event-type params
   - name: postgres_down
     healthcheck: file://systemd_unit
     triggers:

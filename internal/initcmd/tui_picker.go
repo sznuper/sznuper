@@ -7,9 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// pickerModel lets the user choose a service type from the registry.
+// pickerModel lets the user choose a channel type from the registry.
 type pickerModel struct {
-	items    []ServiceType
+	items    []ChannelType
 	filtered []int // indices into items
 	cursor   int
 	filter   textinput.Model
@@ -77,7 +77,7 @@ func (m pickerModel) Update(msg tea.Msg) (pickerModel, tea.Cmd) {
 func (m pickerModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(styleTitle.Render("Pick Service Type"))
+	b.WriteString(styleTitle.Render("Pick Channel Type"))
 	b.WriteByte('\n')
 
 	for i, idx := range m.filtered {
@@ -105,7 +105,7 @@ func (m pickerModel) View() string {
 	return b.String()
 }
 
-// pickedServiceMsg is emitted when the user selects a service type.
+// pickedServiceMsg is emitted when the user selects a channel type.
 type pickedServiceMsg struct {
-	svcType ServiceType
+	svcType ChannelType
 }

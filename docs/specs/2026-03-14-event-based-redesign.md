@@ -2,7 +2,7 @@
 
 ## Context & Motivation
 
-Sznuper's current healthcheck protocol requires healthchecks to emit `status=ok|warning|critical`, coupling two responsibilities into the healthcheck binary: (1) detecting system events and (2) deciding their severity. This means users cannot control notification behavior — which events trigger notifications, with what parameters, to which services — without modifying and rebuilding the healthcheck source code.
+Sznuper's current healthcheck protocol requires healthchecks to emit `status=ok|warning|critical`, coupling two responsibilities into the healthcheck binary: (1) detecting system events and (2) deciding their severity. This means users cannot control notification behavior — which events trigger notifications, with what parameters, to which channels — without modifying and rebuilding the healthcheck source code.
 
 **Real-world problem:** With the ssh_journal healthcheck on a VPS, every SSH brute-force attempt sends a Telegram notification with sound. The user wants failures sent silently and logins sent with sound — but the only way to achieve this is modifying C source code and rebuilding the binary.
 
@@ -68,7 +68,7 @@ options:
 globals:
   hostname: my-server
 
-services:
+channels:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
     params:
@@ -93,8 +93,8 @@ alerts:
     template: <string>         # required — default template for all events
     cooldown: <duration>       # optional — default cooldown for all events
     notify:                    # required — default notify targets for all events
-      - <service_name>
-      - <service_name>:
+      - <channel_name>
+      - <channel_name>:
           params:
             key: value
     events:                    # optional — event handling configuration
@@ -105,8 +105,8 @@ alerts:
           template: <string>     # overrides alert-level template
           cooldown: <duration>   # overrides alert-level cooldown
           notify:                # overrides alert-level notify (replaces entirely)
-            - <service_name>
-            - <service_name>:
+            - <channel_name>
+            - <channel_name>:
                 params:
                   key: value
 ```
@@ -122,7 +122,7 @@ If an event type is not listed in `events.override`, it uses alert-level default
 
 ### Notify Targets
 
-Notify is always an **array**. Each element is either a service name string or a service name with params:
+Notify is always an **array**. Each element is either a channel name string or a channel name with params:
 
 ```yaml
 notify:
@@ -137,7 +137,7 @@ notify:
   - logger
 ```
 
-Notify targets do **not** have a `template` field. Templates are an alert/event concern, not a service concern.
+Notify targets do **not** have a `template` field. Templates are an alert/event concern, not a channel concern.
 
 When notify is specified at event level, it **replaces** the alert-level notify entirely (not merged).
 
@@ -283,7 +283,7 @@ All Sprig functions remain available. Custom array functions unchanged:
 Templates follow the same inheritance as notify and cooldown:
 - Alert-level `template` is the default
 - `events.override.<type>.template` overrides for that event type
-- No per-service template overrides (templates are not a service concern)
+- No per-channel template overrides (templates are not a channel concern)
 
 ---
 
@@ -305,7 +305,7 @@ For each healthcheck execution:
       - if suppressed: skip notification, continue
       - if not: start cooldown timer for this event type
    d. TEMPLATE: render template with event payload + globals + alert + args
-   e. NOTIFY: send to each target service with resolved params
+   e. NOTIFY: send to each target channel with resolved params
 ```
 
 ---
@@ -315,7 +315,7 @@ For each healthcheck execution:
 ### Minimal Config (disk_usage)
 
 ```yaml
-services:
+channels:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
     params:

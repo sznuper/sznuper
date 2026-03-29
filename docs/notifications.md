@@ -2,7 +2,7 @@
 
 ## Notification Templates
 
-Alert templates define the message body sent to services. Templates are Go [`text/template`](https://pkg.go.dev/text/template) strings with [Sprig](https://masterminds.github.io/sprig/) functions, resolved at notification time when the healthcheck has run.
+Alert templates define the message body sent to channels. Templates are Go [`text/template`](https://pkg.go.dev/text/template) strings with [Sprig](https://masterminds.github.io/sprig/) functions, resolved at notification time when the healthcheck has run.
 
 ```yaml
 template: "[{{event.type | upper}}] {{globals.hostname}}: Disk {{args.mount}} at {{event.usage_percent}}%"
@@ -46,7 +46,7 @@ See [Sprig documentation](https://masterminds.github.io/sprig/) for the full lis
 
 ### Template Inheritance
 
-The alert-level `template` is the default for all event types. Per-event-type templates can be specified in `events.override.<type>.template`. Templates are not a per-service concern — all notify targets for an event receive the same rendered message.
+The alert-level `template` is the default for all event types. Per-event-type templates can be specified in `events.override.<type>.template`. Templates are not a per-channel concern — all notify targets for an event receive the same rendered message.
 
 ```yaml
 alerts:
@@ -88,7 +88,7 @@ The config uses two distinct variable syntaxes resolved at different times:
 Uses [envsubst](https://github.com/a8m/envsubst) to substitute system environment variables when the YAML is loaded. Used for secrets and deployment-specific values.
 
 ```yaml
-services:
+channels:
   telegram:
     url: telegram://${TELEGRAM_TOKEN}@telegram
     options:
@@ -107,24 +107,24 @@ alerts:
 
 ---
 
-## Service Options
+## Channel Options
 
-Service options map directly to Shoutrrr query params for each service type. Options can be overridden per alert.
+Channel options map directly to Shoutrrr query params for each Shoutrrr service type. Options can be overridden per alert.
 
 **Resolution order (later overrides earlier):**
 
 ```
-service.params              ← base Shoutrrr params
+channel.params              ← base Shoutrrr params
 alert.notify[].params       ← override for this specific alert
 ```
 
-**Simple notify (service defaults):**
+**Simple notify (channel defaults):**
 
 ```yaml
 notify: [telegram, logfile]
 ```
 
-**Per-alert service override:**
+**Per-alert channel override:**
 
 ```yaml
 notify:
@@ -142,15 +142,15 @@ Options values support `{{...}}` template variables for dynamic behavior based o
 
 Built on top of [Shoutrrr](https://shoutrrr.nickfedor.com/v0.14.0/services/overview/). Any Shoutrrr-supported service works as a notification destination.
 
-Supported services include: Telegram, Discord, Slack, Email (SMTP), Gotify, Google Chat, IFTTT, Mattermost, Matrix, Ntfy, OpsGenie, Pushbullet, Pushover, Rocketchat, Teams, Zulip, generic webhooks, and the built-in logger.
+Supported channels include: Telegram, Discord, Slack, Email (SMTP), Gotify, Google Chat, IFTTT, Mattermost, Matrix, Ntfy, OpsGenie, Pushbullet, Pushover, Rocketchat, Teams, Zulip, generic webhooks, and the built-in logger.
 
 The daemon's responsibility is:
-- **Routing:** which services to notify, based on alert config.
-- **Option merging:** resolve service base options → alert-level overrides into a final set of Shoutrrr params.
+- **Routing:** which channels to notify, based on alert config.
+- **Option merging:** resolve channel base options → alert-level overrides into a final set of Shoutrrr params.
 - **Spam prevention:** cooldown logic per alert and event type.
 - **Templating:** resolve `{{...}}` variables into the final message body and option values.
 
-Shoutrrr handles the actual delivery. The daemon does not interpret service options — it passes the merged key-value pairs directly to Shoutrrr.
+Shoutrrr handles the actual delivery. The daemon does not interpret channel options — it passes the merged key-value pairs directly to Shoutrrr.
 
 ---
 

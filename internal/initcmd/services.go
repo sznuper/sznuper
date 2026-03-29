@@ -2,21 +2,21 @@ package initcmd
 
 import "fmt"
 
-// ServiceField describes a single input required to build a Shoutrrr URL.
-type ServiceField struct {
+// ChannelField describes a single input required to build a Shoutrrr URL.
+type ChannelField struct {
 	Label       string // "Bot Token"
 	EnvVar      string // default env var name, e.g. "TELEGRAM_TOKEN"
 	Placeholder string // hint text
 	IsSecret    bool   // mask in TUI
-	IsParam     bool   // goes into service params map, not URL
+	IsParam     bool   // goes into channel params map, not URL
 	ParamKey    string // actual Shoutrrr param key, e.g. "chats" (only if IsParam)
 }
 
-// ServiceType describes a notification service template.
-type ServiceType struct {
+// ChannelType describes a notification channel template.
+type ChannelType struct {
 	Name     string         // "telegram"
 	Label    string         // "Telegram"
-	Fields   []ServiceField // ordered inputs
+	Fields   []ChannelField // ordered inputs
 	BuildURL func(vals map[string]string) string
 }
 
@@ -25,12 +25,12 @@ func envRef(name string) string {
 	return fmt.Sprintf("${%s}", name)
 }
 
-// Registry is the ordered list of all supported service types.
-var Registry = []ServiceType{
+// Registry is the ordered list of all supported channel types.
+var Registry = []ChannelType{
 	{
 		Name:  "telegram",
 		Label: "Telegram",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Bot Token", EnvVar: "TELEGRAM_TOKEN", Placeholder: "e.g. 123456:ABC-DEF...", IsSecret: true},
 			{Label: "Chat ID", EnvVar: "TELEGRAM_CHAT_ID", Placeholder: "e.g. -1001234567890", IsParam: true, ParamKey: "chats"},
 		},
@@ -41,7 +41,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "discord",
 		Label: "Discord",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Token", EnvVar: "DISCORD_TOKEN", Placeholder: "webhook token", IsSecret: true},
 			{Label: "Webhook ID", EnvVar: "DISCORD_WEBHOOK_ID", Placeholder: "webhook ID"},
 		},
@@ -52,7 +52,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "slack",
 		Label: "Slack",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Token A", EnvVar: "SLACK_TOKEN_A", Placeholder: "first token part", IsSecret: true},
 			{Label: "Token B", EnvVar: "SLACK_TOKEN_B", Placeholder: "second token part", IsSecret: true},
 			{Label: "Token C", EnvVar: "SLACK_TOKEN_C", Placeholder: "third token part", IsSecret: true},
@@ -64,7 +64,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "teams",
 		Label: "Microsoft Teams",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Group", EnvVar: "TEAMS_GROUP", Placeholder: "group UUID"},
 			{Label: "Tenant", EnvVar: "TEAMS_TENANT", Placeholder: "tenant UUID"},
 			{Label: "Alt ID", EnvVar: "TEAMS_ALT_ID", Placeholder: "alt ID"},
@@ -79,7 +79,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "smtp",
 		Label: "Email (SMTP)",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Username", EnvVar: "SMTP_USER", Placeholder: "SMTP username"},
 			{Label: "Password", EnvVar: "SMTP_PASS", Placeholder: "SMTP password", IsSecret: true},
 			{Label: "Host", EnvVar: "SMTP_HOST", Placeholder: "e.g. smtp.gmail.com"},
@@ -96,7 +96,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "gotify",
 		Label: "Gotify",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Host", EnvVar: "GOTIFY_HOST", Placeholder: "e.g. gotify.example.com"},
 			{Label: "Token", EnvVar: "GOTIFY_TOKEN", Placeholder: "app token", IsSecret: true},
 		},
@@ -107,7 +107,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "ntfy",
 		Label: "Ntfy",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Host", EnvVar: "NTFY_HOST", Placeholder: "e.g. ntfy.sh"},
 			{Label: "Topic", EnvVar: "NTFY_TOPIC", Placeholder: "topic name"},
 		},
@@ -118,7 +118,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "pushover",
 		Label: "Pushover",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "API Token", EnvVar: "PUSHOVER_TOKEN", Placeholder: "application API token", IsSecret: true},
 			{Label: "User Key", EnvVar: "PUSHOVER_USER", Placeholder: "user key"},
 		},
@@ -129,7 +129,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "matrix",
 		Label: "Matrix",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Username", EnvVar: "MATRIX_USER", Placeholder: "matrix username"},
 			{Label: "Password", EnvVar: "MATRIX_PASS", Placeholder: "password", IsSecret: true},
 			{Label: "Host", EnvVar: "MATRIX_HOST", Placeholder: "e.g. matrix.org"},
@@ -144,7 +144,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "generic",
 		Label: "Generic Webhook",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "URL", EnvVar: "WEBHOOK_URL", Placeholder: "e.g. example.com/webhook"},
 		},
 		BuildURL: func(v map[string]string) string {
@@ -162,7 +162,7 @@ var Registry = []ServiceType{
 	{
 		Name:  "custom",
 		Label: "Custom Shoutrrr URL",
-		Fields: []ServiceField{
+		Fields: []ChannelField{
 			{Label: "Shoutrrr URL", EnvVar: "", Placeholder: "e.g. telegram://token@telegram"},
 		},
 		BuildURL: func(v map[string]string) string {

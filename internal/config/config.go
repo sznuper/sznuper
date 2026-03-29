@@ -13,7 +13,7 @@ import (
 type Config struct {
 	Options  Options            `yaml:"options"`
 	Globals  map[string]any     `yaml:"globals,omitempty"`
-	Services map[string]Service `yaml:"services,omitempty" validate:"dive"`
+	Channels map[string]Channel `yaml:"channels,omitempty" validate:"dive"`
 	Alerts   []Alert            `yaml:"alerts,omitempty"   validate:"dive"`
 }
 
@@ -23,7 +23,7 @@ type Options struct {
 	LogsDir         string `yaml:"logs_dir,omitempty"`
 }
 
-type Service struct {
+type Channel struct {
 	URL    string            `yaml:"url"    validate:"required"`
 	Params map[string]string `yaml:"params,omitempty"`
 }
@@ -98,28 +98,28 @@ type EventOverride struct {
 	Notify   []NotifyTarget `yaml:"notify,omitempty"`
 }
 
-// NotifyTarget handles a plain service name string or a service object with params.
+// NotifyTarget handles a plain channel name string or a channel object with params.
 //
 // YAML formats:
 //
 //   - telegram                    (plain string)
-//   - telegram:                   (map with service name as key)
+//   - telegram:                   (map with channel name as key)
 //     params:
 //     notification: "false"
 type NotifyTarget struct {
-	Service string            `yaml:"-" validate:"required"`
+	Channel string            `yaml:"-" validate:"required"`
 	Params  map[string]string `yaml:"params,omitempty"`
 }
 
 func (n NotifyTarget) MarshalYAML() (any, error) {
 	if len(n.Params) == 0 {
-		return n.Service, nil
+		return n.Channel, nil
 	}
 	type paramsOnly struct {
 		Params map[string]string `yaml:"params"`
 	}
 	return map[string]any{
-		n.Service: paramsOnly{Params: n.Params},
+		n.Channel: paramsOnly{Params: n.Params},
 	}, nil
 }
 
@@ -127,7 +127,7 @@ func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
 	// Try plain string: "telegram"
 	var str string
 	if err := unmarshal(&str); err == nil {
-		n.Service = str
+		n.Channel = str
 		return nil
 	}
 
@@ -136,13 +136,13 @@ func (n *NotifyTarget) UnmarshalYAML(unmarshal func(any) error) error {
 		Params map[string]string `yaml:"params"`
 	}
 	if err := unmarshal(&obj); err != nil {
-		return fmt.Errorf("notify: must be a service name string or a service object")
+		return fmt.Errorf("notify: must be a channel name string or a channel object")
 	}
 	if len(obj) != 1 {
-		return fmt.Errorf("notify: service object must have exactly one key")
+		return fmt.Errorf("notify: channel object must have exactly one key")
 	}
 	for name, cfg := range obj {
-		n.Service = name
+		n.Channel = name
 		n.Params = cfg.Params
 	}
 	return nil

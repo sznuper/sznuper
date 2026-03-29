@@ -27,7 +27,7 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "test-host"},
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
@@ -35,7 +35,7 @@ func TestRunAlert_EndToEnd(t *testing.T) {
 				Name:        "test_alert",
 				Healthcheck: "file://check.sh",
 				Template:    `{{event.type | upper}} {{globals.hostname}}: usage={{event.usage}}%`,
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
 	}
@@ -116,7 +116,7 @@ func TestRunAlert_EmptyOutput(t *testing.T) {
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "host"},
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
@@ -124,7 +124,7 @@ func TestRunAlert_EmptyOutput(t *testing.T) {
 				Name:        "empty",
 				Healthcheck: "file://check.sh",
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
 	}
@@ -169,7 +169,7 @@ func TestRunAlert_SideEffectsRun(t *testing.T) {
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "test-host"},
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
@@ -177,7 +177,7 @@ func TestRunAlert_SideEffectsRun(t *testing.T) {
 				Name:        "se_test",
 				Healthcheck: "file://check.sh",
 				Template:    "msg",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 				SideEffects: []string{
 					fmt.Sprintf("echo \"$HEALTHCHECK_EVENT_TYPE:$HEALTHCHECK_EVENT_USAGE\" > %s", outFile),
 				},
@@ -214,7 +214,7 @@ func TestRunAlert_SideEffectsSkippedDryRun(t *testing.T) {
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "test-host"},
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
@@ -222,7 +222,7 @@ func TestRunAlert_SideEffectsSkippedDryRun(t *testing.T) {
 				Name:        "se_dry",
 				Healthcheck: "file://check.sh",
 				Template:    "msg",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 				SideEffects: []string{"echo should-not-run"},
 			},
 		},
@@ -247,12 +247,12 @@ func TestRunAll(t *testing.T) {
 	cfg := &config.Config{
 		Options: config.Options{HealthchecksDir: dir},
 		Globals: map[string]any{"hostname": "host"},
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
-			{Name: "a1", Healthcheck: "file://check.sh", Template: "msg1", Notify: []config.NotifyTarget{{Service: "logger"}}},
-			{Name: "a2", Healthcheck: "file://check.sh", Template: "msg2", Notify: []config.NotifyTarget{{Service: "logger"}}},
+			{Name: "a1", Healthcheck: "file://check.sh", Template: "msg1", Notify: []config.NotifyTarget{{Channel: "logger"}}},
+			{Name: "a2", Healthcheck: "file://check.sh", Template: "msg2", Notify: []config.NotifyTarget{{Channel: "logger"}}},
 		},
 	}
 

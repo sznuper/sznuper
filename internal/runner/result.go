@@ -9,8 +9,8 @@ type Result struct {
 	HealthcheckPath string
 	EventType       string            // the event's type field
 	Fields          map[string]string // parsed scalar pairs
-	Rendered        map[string]string // service name -> rendered message
-	Notified        []string          // services notified (or would-notify)
+	Rendered        map[string]string // channel name -> rendered message
+	Notified        []string          // channels notified (or would-notify)
 	Env             []string
 	DryRun          bool
 	Suppressed      bool // notification suppressed by cooldown

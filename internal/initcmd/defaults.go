@@ -58,13 +58,13 @@ func loadEmbedded(name string) (*config.Config, error) {
 	return cfg, nil
 }
 
-// mergeConfig applies overlay on top of base: appends alerts, merges services.
+// mergeConfig applies overlay on top of base: appends alerts, merges channels.
 func mergeConfig(base, overlay *config.Config) {
-	for k, v := range overlay.Services {
-		if base.Services == nil {
-			base.Services = make(map[string]config.Service)
+	for k, v := range overlay.Channels {
+		if base.Channels == nil {
+			base.Channels = make(map[string]config.Channel)
 		}
-		base.Services[k] = v
+		base.Channels[k] = v
 	}
 	base.Alerts = append(base.Alerts, overlay.Alerts...)
 }

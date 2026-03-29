@@ -117,15 +117,15 @@ alerts:
 		t.Fatalf("notify count = %d, want 2", len(notify))
 	}
 
-	if notify[0].Service != "logfile" {
-		t.Errorf("notify[0] service = %q, want %q", notify[0].Service, "logfile")
+	if notify[0].Channel != "logfile" {
+		t.Errorf("notify[0] service = %q, want %q", notify[0].Channel, "logfile")
 	}
 	if len(notify[0].Params) != 0 {
 		t.Errorf("notify[0] params = %v, want empty", notify[0].Params)
 	}
 
-	if notify[1].Service != "telegram" {
-		t.Errorf("notify[1] service = %q, want %q", notify[1].Service, "telegram")
+	if notify[1].Channel != "telegram" {
+		t.Errorf("notify[1] service = %q, want %q", notify[1].Channel, "telegram")
 	}
 	if notify[1].Params["notification"] != "false" {
 		t.Errorf("notify[1] params = %v, want notification=false", notify[1].Params)
@@ -181,8 +181,8 @@ alerts:
 	if len(failure.Notify) != 2 {
 		t.Fatalf("failure notify count = %d, want 2", len(failure.Notify))
 	}
-	if failure.Notify[0].Service != "telegram" {
-		t.Errorf("failure notify[0] service = %q, want %q", failure.Notify[0].Service, "telegram")
+	if failure.Notify[0].Channel != "telegram" {
+		t.Errorf("failure notify[0] service = %q, want %q", failure.Notify[0].Channel, "telegram")
 	}
 	if failure.Notify[0].Params["notification"] != "false" {
 		t.Errorf("failure notify[0] params = %v, want notification=false", failure.Notify[0].Params)
@@ -195,7 +195,7 @@ alerts:
 	if login.Template != "Login by {{event.user}}" {
 		t.Errorf("login template = %q, want %q", login.Template, "Login by {{event.user}}")
 	}
-	if len(login.Notify) != 1 || login.Notify[0].Service != "telegram" {
+	if len(login.Notify) != 1 || login.Notify[0].Channel != "telegram" {
 		t.Errorf("login notify = %v, want [telegram]", login.Notify)
 	}
 }
@@ -229,14 +229,14 @@ alerts:
 
 func TestEnvsubst(t *testing.T) {
 	yml := `
-services:
+channels:
   test:
     url: https://${TEST_TOKEN}@example.com
 `
 	t.Setenv("TEST_TOKEN", "secret123")
 	cfg := loadFromString(t, yml)
-	if cfg.Services["test"].URL != "https://secret123@example.com" {
-		t.Errorf("url = %q, want envsubst applied", cfg.Services["test"].URL)
+	if cfg.Channels["test"].URL != "https://secret123@example.com" {
+		t.Errorf("url = %q, want envsubst applied", cfg.Channels["test"].URL)
 	}
 }
 
@@ -287,14 +287,14 @@ alerts:
 	}
 }
 
-func TestValidation_ServiceMissingURL(t *testing.T) {
+func TestValidation_ChannelMissingURL(t *testing.T) {
 	if err := loadErr(t, `
-services:
+channels:
   bad:
     params:
       foo: bar
 `); err == nil {
-		t.Fatal("expected error for service missing url")
+		t.Fatal("expected error for channel missing url")
 	}
 }
 

@@ -48,7 +48,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestMergeConfig(t *testing.T) {
 	base := &config.Config{
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"logger": {URL: "logger://"},
 		},
 		Alerts: []config.Alert{
@@ -57,7 +57,7 @@ func TestMergeConfig(t *testing.T) {
 	}
 
 	overlay := &config.Config{
-		Services: map[string]config.Service{
+		Channels: map[string]config.Channel{
 			"extra": {URL: "extra://"},
 		},
 		Alerts: []config.Alert{
@@ -67,11 +67,11 @@ func TestMergeConfig(t *testing.T) {
 
 	mergeConfig(base, overlay)
 
-	if len(base.Services) != 2 {
-		t.Errorf("expected 2 services, got %d", len(base.Services))
+	if len(base.Channels) != 2 {
+		t.Errorf("expected 2 channels, got %d", len(base.Channels))
 	}
-	if _, ok := base.Services["extra"]; !ok {
-		t.Error("expected extra service after merge")
+	if _, ok := base.Channels["extra"]; !ok {
+		t.Error("expected extra channel after merge")
 	}
 	if len(base.Alerts) != 2 {
 		t.Errorf("expected 2 alerts, got %d", len(base.Alerts))

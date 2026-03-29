@@ -23,22 +23,22 @@ var validateCmd = &cobra.Command{
 
 		hasError := false
 
-		// Validate service definitions (dry-run Shoutrrr sender creation).
-		for name, svc := range cfg.Services {
-			if hasTemplateVar(svc.URL) {
+		// Validate channel definitions (dry-run Shoutrrr sender creation).
+		for name, ch := range cfg.Channels {
+			if hasTemplateVar(ch.URL) {
 				fmt.Printf("~ %s (skipped: URL contains template variables)\n", name)
 				continue
 			}
 			t := notify.Target{
-				ServiceName: name,
-				URL:         svc.URL,
-				Params:      svc.Params,
+				ChannelName: name,
+				URL:         ch.URL,
+				Params:      ch.Params,
 			}
 			if err := notify.Validate(t); err != nil {
-				fmt.Printf("✗ service %s: %s\n", name, err)
+				fmt.Printf("✗ channel %s: %s\n", name, err)
 				hasError = true
 			} else {
-				fmt.Printf("✓ service %s\n", name)
+				fmt.Printf("✓ channel %s\n", name)
 			}
 		}
 
@@ -56,8 +56,8 @@ var validateCmd = &cobra.Command{
 				fmt.Printf("✓ %s (%s)\n", alert.Name, alert.Healthcheck)
 			}
 
-			for _, bad := range checkServiceRefs(alert, cfg.Services) {
-				fmt.Printf("✗ %s: unknown service %q\n", alert.Name, bad)
+			for _, bad := range checkChannelRefs(alert, cfg.Channels) {
+				fmt.Printf("✗ %s: unknown channel %q\n", alert.Name, bad)
 				hasError = true
 			}
 		}
@@ -69,20 +69,20 @@ var validateCmd = &cobra.Command{
 	},
 }
 
-// checkServiceRefs returns service names referenced by the alert that are
-// not defined in the services map.
-func checkServiceRefs(alert config.Alert, services map[string]config.Service) []string {
+// checkChannelRefs returns channel names referenced by the alert that are
+// not defined in the channels map.
+func checkChannelRefs(alert config.Alert, channels map[string]config.Channel) []string {
 	var bad []string
 	for _, nt := range alert.Notify {
-		if _, ok := services[nt.Service]; !ok {
-			bad = append(bad, nt.Service)
+		if _, ok := channels[nt.Channel]; !ok {
+			bad = append(bad, nt.Channel)
 		}
 	}
 	if alert.Events != nil {
 		for _, ov := range alert.Events.Override {
 			for _, nt := range ov.Notify {
-				if _, ok := services[nt.Service]; !ok {
-					bad = append(bad, nt.Service)
+				if _, ok := channels[nt.Channel]; !ok {
+					bad = append(bad, nt.Channel)
 				}
 			}
 		}

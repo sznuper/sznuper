@@ -42,10 +42,10 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Interval: interval.String()}},
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -77,10 +77,10 @@ func TestScheduler_CronFires(t *testing.T) {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Cron: "* * * * * *"}}, // every second (6-field)
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -122,10 +122,10 @@ func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Cron: "not a cron expression"}},
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -155,10 +155,10 @@ func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 				Name:        "no-trigger",
 				Healthcheck: "file://check.sh",
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -192,10 +192,10 @@ func TestScheduler_MultipleTriggers_BothFire(t *testing.T) {
 					{Cron: "* * * * * *"}, // every second
 				},
 				Template: "test",
-				Notify:   []config.NotifyTarget{{Service: "logger"}},
+				Notify:   []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	var count atomic.Int32
@@ -231,10 +231,10 @@ func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Interval: "20ms"}},
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	sched := New(newRunner(t, cfg), slog.Default(), nil)
@@ -282,10 +282,10 @@ func watchAlert(t *testing.T, dir, watchPath string) *config.Config {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Watch: watchPath}},
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 }
 
@@ -377,10 +377,10 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 				Healthcheck: "file://check.sh",
 				Triggers:    []config.Trigger{{Watch: watchPath}},
 				Template:    "test",
-				Notify:      []config.NotifyTarget{{Service: "logger"}},
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
 			},
 		},
-		Services: map[string]config.Service{"logger": {URL: "logger://"}},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))

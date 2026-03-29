@@ -8,18 +8,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// formModel collects field values (env var names) for a chosen service type.
+// formModel collects field values (env var names) for a chosen channel type.
 type formModel struct {
-	svcType   ServiceType
-	nameInput textinput.Model // service name
+	svcType   ChannelType
+	nameInput textinput.Model // channel name
 	inputs    []textinput.Model
-	fields    []ServiceField
+	fields    []ChannelField
 	focusIdx  int // 0 = name, 1..n = fields
 	err       string
-	existing  map[string]bool // existing service names (for uniqueness check)
+	existing  map[string]bool // existing channel names (for uniqueness check)
 }
 
-func newFormModel(svcType ServiceType, existing map[string]bool) formModel {
+func newFormModel(svcType ChannelType, existing map[string]bool) formModel {
 	nameInput := textinput.New()
 	nameInput.Placeholder = svcType.Name
 	nameInput.CharLimit = 40
@@ -113,7 +113,7 @@ func (m *formModel) trySubmit() tea.Cmd {
 		name = m.svcType.Name
 	}
 	if m.existing[name] {
-		m.err = fmt.Sprintf("Service name %q already exists", name)
+		m.err = fmt.Sprintf("Channel name %q already exists", name)
 		return nil
 	}
 
@@ -160,8 +160,8 @@ func (m formModel) View() string {
 	b.WriteString(styleTitle.Render(m.svcType.Label))
 	b.WriteByte('\n')
 
-	// Service name
-	label := "Name for this service:"
+	// Channel name
+	label := "Name for this channel:"
 	if m.focusIdx == 0 {
 		label = styleHighlight.Render(label)
 	}

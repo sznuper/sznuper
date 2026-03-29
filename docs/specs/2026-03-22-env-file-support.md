@@ -2,7 +2,7 @@
 
 ## Context & Motivation
 
-Sznuper needs secrets (API tokens, chat IDs) to talk to notification services. Config already supports `${VAR}` interpolation via `a8m/envsubst`, which means configs can be shared (e.g. via `sznuper init --from <url>`) with secrets kept per-machine. But there's no standard for where those secrets live.
+Sznuper needs secrets (API tokens, chat IDs) to talk to notification channels. Config already supports `${VAR}` interpolation via `a8m/envsubst`, which means configs can be shared (e.g. via `sznuper init --from <url>`) with secrets kept per-machine. But there's no standard for where those secrets live.
 
 Currently the systemd service has `EnvironmentFile=-/etc/sznuper/.env`, but nothing creates that file. Non-systemd users must `source .env` or export variables manually. The result is a different setup story for every deployment mode, and no tooling to help.
 
@@ -75,7 +75,7 @@ Chicken-and-egg: config contains `${VAR}` references that need `.env` to be load
 
 These items depend on this spec but are out of scope for the initial implementation:
 
-- **`install.sh` (dist repo) creates `.env`** — with `600` permissions next to the config (systemd loads it via `EnvironmentFile=` in the unit file). Can scaffold placeholder variable names based on which services were chosen during init.
+- **`install.sh` (dist repo) creates `.env`** — with `600` permissions next to the config (systemd loads it via `EnvironmentFile=` in the unit file). Can scaffold placeholder variable names based on which channels were chosen during init.
 - **Permission warning** — `sznuper start` warns if the `--env-file` file is world-readable
 - **Validation** — `sznuper validate` checks that `${VAR}` references in config resolve to non-empty values
 - **Secrets encryption** — `sznuper secrets set KEY` that encrypts at rest and decrypts at startup (must not conflict with `.env` loading)

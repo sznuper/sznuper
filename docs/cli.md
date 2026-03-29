@@ -25,7 +25,7 @@ Loads the config, resolves every alert's healthcheck, and reports per-alert succ
 Validates and syncs the current config:
 
 - Validates YAML syntax.
-- Verifies all services have valid Shoutrrr URLs.
+- Verifies all channels have valid Shoutrrr URLs.
 - Verifies all `file://` healthchecks exist and are executable.
 - Verifies all `sha256` hashes match.
 - Fetches/re-fetches all `https://` healthchecks (pinned: only if not cached; unpinned: always).
@@ -33,7 +33,7 @@ Validates and syncs the current config:
 
 ## `sznuper run <alert_name>`
 
-Manually triggers a specific alert once. Runs the healthcheck, renders the template, and sends notifications to configured services. Ignores the trigger type — just executes the healthcheck immediately.
+Manually triggers a specific alert once. Runs the healthcheck, renders the template, and sends notifications to configured channels. Ignores the trigger type — just executes the healthcheck immediately.
 
 For healthchecks that expect stdin (file watch healthchecks), pipe input manually:
 

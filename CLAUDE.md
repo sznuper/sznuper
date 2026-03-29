@@ -29,5 +29,5 @@ Specification lives in `docs/`:
 - `triggers.md` — interval, cron, file watch, pipe triggers, timeout, concurrency
 - `cooldown.md` — cooldown config, behavior, timeline example
 - `cli.md` — init, start, validate, run, hash commands
-- `notifications.md` — templates, Sprig functions, variable interpolation, service options, Shoutrrr delivery
+- `notifications.md` — templates, Sprig functions, variable interpolation, channel options, Shoutrrr delivery
 - `dependencies.md` — dependency choices and rationale (viper vs goccy/go-yaml, validator options)

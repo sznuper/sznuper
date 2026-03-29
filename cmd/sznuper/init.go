@@ -16,13 +16,13 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a new sznuper configuration",
-	Long:  "Interactive TUI or non-interactive config generator. Use --add-service for non-interactive mode.",
+	Long:  "Interactive TUI or non-interactive config generator. Use --add-channel for non-interactive mode.",
 	RunE:  runInit,
 }
 
 var (
 	initFrom       string
-	initAddService []string
+	initAddChannel []string
 	initForce      bool
 	initOutput     string
 )
@@ -30,7 +30,7 @@ var (
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().StringVar(&initFrom, "from", "", "path or URL to base config")
-	initCmd.Flags().StringArrayVar(&initAddService, "add-service", nil, "add service as name:shoutrrr-url (repeatable)")
+	initCmd.Flags().StringArrayVar(&initAddChannel, "add-channel", nil, "add channel as name:shoutrrr-url (repeatable)")
 	initCmd.Flags().BoolVar(&initForce, "force", false, "overwrite existing config file")
 	initCmd.Flags().StringVarP(&initOutput, "output", "o", "", "output path (overrides auto-detect)")
 }
@@ -58,14 +58,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Fill defaults for missing fields
 	applyDefaults(cfg)
 
-	// Decide mode: non-interactive if --add-service present
-	if len(initAddService) > 0 {
+	// Decide mode: non-interactive if --add-channel present
+	if len(initAddChannel) > 0 {
 		return runNonInteractive(cfg, outPath)
 	}
 
 	// Interactive mode — require a TTY
 	if !isatty.IsTerminal(os.Stdin.Fd()) && !isatty.IsCygwinTerminal(os.Stdin.Fd()) {
-		return fmt.Errorf("no TTY detected and no --add-service flags; cannot run interactive mode")
+		return fmt.Errorf("no TTY detected and no --add-channel flags; cannot run interactive mode")
 	}
 
 	return initcmd.Run(cfg, outPath)
@@ -124,31 +124,31 @@ func applyDefaults(cfg *config.Config) {
 }
 
 func runNonInteractive(cfg *config.Config, outPath string) error {
-	if cfg.Services == nil {
-		cfg.Services = make(map[string]config.Service)
+	if cfg.Channels == nil {
+		cfg.Channels = make(map[string]config.Channel)
 	}
 
 	var added []string
-	for _, entry := range initAddService {
+	for _, entry := range initAddChannel {
 		name, url, ok := strings.Cut(entry, ":")
 		if !ok || name == "" || url == "" {
-			return fmt.Errorf("invalid --add-service format %q (expected name:shoutrrr-url)", entry)
+			return fmt.Errorf("invalid --add-channel format %q (expected name:shoutrrr-url)", entry)
 		}
-		if _, exists := cfg.Services[name]; exists {
-			return fmt.Errorf("service %q already exists in config", name)
+		if _, exists := cfg.Channels[name]; exists {
+			return fmt.Errorf("channel %q already exists in config", name)
 		}
-		cfg.Services[name] = config.Service{URL: url}
+		cfg.Channels[name] = config.Channel{URL: url}
 		added = append(added, name)
 	}
 
-	if len(cfg.Services) == 0 {
-		return fmt.Errorf("at least one notification service is required (use --add-service)")
+	if len(cfg.Channels) == 0 {
+		return fmt.Errorf("at least one notification channel is required (use --add-channel)")
 	}
 
 	for i := range cfg.Alerts {
 		for _, name := range added {
 			cfg.Alerts[i].Notify = append(cfg.Alerts[i].Notify,
-				config.NotifyTarget{Service: name})
+				config.NotifyTarget{Channel: name})
 		}
 	}
 

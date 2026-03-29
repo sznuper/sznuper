@@ -165,7 +165,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 	}
 	log.Debug("output parsed", "events", len(events))
 
-	svcs := mapServiceDefs(r.cfg.Services)
+	chans := mapChannelDefs(r.cfg.Channels)
 
 	// Stage 4: Process each event.
 	for _, ev := range events {
@@ -260,7 +260,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 		}
 		refs := mapNotifyRefs(effectiveNotify)
 
-		targets, err := notify.ResolveTargets(refs, svcs, effectiveTemplate, tmplData)
+		targets, err := notify.ResolveTargets(refs, chans, effectiveTemplate, tmplData)
 		if err != nil {
 			result.Err = err
 			result.ErrStage = "template"
@@ -271,7 +271,7 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 
 		result.Rendered = make(map[string]string, len(targets))
 		for _, t := range targets {
-			result.Rendered[t.ServiceName] = t.Message
+			result.Rendered[t.ChannelName] = t.Message
 		}
 		log.Debug("templates rendered", "targets", len(targets))
 
@@ -281,25 +281,25 @@ func (r *Runner) runAlert(ctx context.Context, alert *config.Alert, opts RunOpts
 				if err := notify.Validate(t); err != nil {
 					result.Err = err
 					result.ErrStage = "notify"
-					log.Error("notify validation failed (dry-run)", "service", t.ServiceName, "error", err)
+					log.Error("notify validation failed (dry-run)", "channel", t.ChannelName, "error", err)
 					sendErr(result)
 					return
 				}
-				result.Notified = append(result.Notified, t.ServiceName)
-				log.Debug("would notify (dry-run)", "service", t.ServiceName, "message", t.Message)
+				result.Notified = append(result.Notified, t.ChannelName)
+				log.Debug("would notify (dry-run)", "channel", t.ChannelName, "message", t.Message)
 				continue
 			}
 
-			log.Info("sending notification", "service", t.ServiceName)
+			log.Info("sending notification", "channel", t.ChannelName)
 			if err := notify.Send(t); err != nil {
 				result.Err = err
 				result.ErrStage = "notify"
-				log.Error("notify failed", "service", t.ServiceName, "error", err)
+				log.Error("notify failed", "channel", t.ChannelName, "error", err)
 				sendErr(result)
 				return
 			}
-			result.Notified = append(result.Notified, t.ServiceName)
-			log.Debug("notification sent", "service", t.ServiceName)
+			result.Notified = append(result.Notified, t.ChannelName)
+			log.Debug("notification sent", "channel", t.ChannelName)
 		}
 
 		// f. Side effects.
@@ -377,19 +377,19 @@ func mapNotifyRefs(targets []config.NotifyTarget) []notify.NotifyRef {
 	refs := make([]notify.NotifyRef, len(targets))
 	for i, t := range targets {
 		refs[i] = notify.NotifyRef{
-			ServiceName: t.Service,
+			ChannelName: t.Channel,
 			Params:      t.Params,
 		}
 	}
 	return refs
 }
 
-func mapServiceDefs(services map[string]config.Service) map[string]notify.ServiceDef {
-	defs := make(map[string]notify.ServiceDef, len(services))
-	for name, svc := range services {
-		defs[name] = notify.ServiceDef{
-			URL:    svc.URL,
-			Params: svc.Params,
+func mapChannelDefs(channels map[string]config.Channel) map[string]notify.ChannelDef {
+	defs := make(map[string]notify.ChannelDef, len(channels))
+	for name, ch := range channels {
+		defs[name] = notify.ChannelDef{
+			URL:    ch.URL,
+			Params: ch.Params,
 		}
 	}
 	return defs

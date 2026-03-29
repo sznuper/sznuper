@@ -10,7 +10,7 @@ import (
 )
 
 // sectionBreak matches top-level YAML keys (no leading whitespace) to insert
-// blank lines between sections like options, globals, services, alerts.
+// blank lines between sections like options, globals, channels, alerts.
 var sectionBreak = regexp.MustCompile(`(?m)^(\S)`)
 
 // Marshal serializes cfg to formatted YAML bytes.

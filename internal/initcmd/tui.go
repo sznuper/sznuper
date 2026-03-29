@@ -32,15 +32,15 @@ type Model struct {
 }
 
 // NewModel creates the root TUI model.
-// baseServices are services inherited from --from; cfg is the working config.
+// Channels inherited from --from are shown pre-populated; cfg is the working config.
 func NewModel(cfg *config.Config, path string) Model {
 	var services []addedService
-	for name, svc := range cfg.Services {
+	for name, ch := range cfg.Channels {
 		services = append(services, addedService{
 			name:     name,
 			typeName: "base",
-			url:      svc.URL,
-			params:   svc.Params,
+			url:      ch.URL,
+			params:   ch.Params,
 		})
 	}
 	return Model{
@@ -101,7 +101,7 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.picker.Init()
 	case actionFinishMsg:
 		if len(m.list.services) == 0 {
-			m.err = "Add at least one notification service before saving"
+			m.err = "Add at least one notification channel before saving"
 			return m, nil
 		}
 		m.buildConfig()
@@ -202,24 +202,24 @@ func (m Model) View() string {
 
 func (m *Model) buildConfig() {
 	existing := make(map[string]bool)
-	for name := range m.cfg.Services {
+	for name := range m.cfg.Channels {
 		existing[name] = true
 	}
 
-	if m.cfg.Services == nil {
-		m.cfg.Services = make(map[string]config.Service)
+	if m.cfg.Channels == nil {
+		m.cfg.Channels = make(map[string]config.Channel)
 	}
 
 	var added []string
 	for _, svc := range m.list.services {
-		s := config.Service{URL: svc.url}
+		ch := config.Channel{URL: svc.url}
 		if len(svc.params) > 0 {
-			s.Params = make(map[string]string)
+			ch.Params = make(map[string]string)
 			for k, v := range svc.params {
-				s.Params[k] = v
+				ch.Params[k] = v
 			}
 		}
-		m.cfg.Services[svc.name] = s
+		m.cfg.Channels[svc.name] = ch
 		if !existing[svc.name] {
 			added = append(added, svc.name)
 		}
@@ -228,7 +228,7 @@ func (m *Model) buildConfig() {
 	for i := range m.cfg.Alerts {
 		for _, name := range added {
 			m.cfg.Alerts[i].Notify = append(m.cfg.Alerts[i].Notify,
-				config.NotifyTarget{Service: name})
+				config.NotifyTarget{Channel: name})
 		}
 	}
 }

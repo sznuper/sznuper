@@ -22,7 +22,7 @@ When a notification permanently fails (all retries exhausted or retries disabled
 
 Location: `~/.local/share/sznuper/failed.log` (or `/var/log/sznuper/failed.log` for root).
 
-Each entry: timestamp, alert name, event type, target service, and the error.
+Each entry: timestamp, alert name, event type, target channel, and the error.
 
 ## Consecutive failure threshold
 
@@ -48,7 +48,7 @@ Open questions:
 
 ## Config hot-reload
 
-Re-read the config file when it changes on disk, without requiring a full daemon restart. Watch for file changes (e.g. inotify/fsnotify) and apply the new config at runtime — add/remove/update alerts, services, and options.
+Re-read the config file when it changes on disk, without requiring a full daemon restart. Watch for file changes (e.g. inotify/fsnotify) and apply the new config at runtime — add/remove/update alerts, channels, and options.
 
 ## Logging overhaul (Caddy-inspired)
 
@@ -66,9 +66,9 @@ During `sznuper init`, present users with a selectable list of healthchecks to i
 
 Adding arbitrary `https://` healthchecks in the TUI is probably not worth it -- a single alert has too many options to configure interactively. Users already have `--from` for that.
 
-## Rename "services" to "channels"
+## ~~Rename "services" to "channels"~~ Done
 
-Rename the notification `services` concept to `channels` throughout the codebase and config. "Channel" is more intuitive and aligns with the terminology used by tools like Oncall/OpenClaw and similar incident management tools that have become popular.
+Renamed the notification `services` concept to `channels` throughout the codebase and config. "Channel" is more intuitive and aligns with the terminology used by tools like Oncall/OpenClaw and similar incident management tools that have become popular.
 
 ## Goreleaser
 

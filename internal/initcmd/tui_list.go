@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// listModel shows currently added services and offers add/finish actions.
+// listModel shows currently added channels and offers add/finish actions.
 type listModel struct {
 	services []addedService // services added so far
 	cursor   int            // 0..len(services)+1 (add, finish)
@@ -68,11 +68,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 func (m listModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(styleTitle.Render("Services"))
+	b.WriteString(styleTitle.Render("Channels"))
 	b.WriteByte('\n')
 
 	if len(m.services) == 0 {
-		b.WriteString(styleSubtle.Render("  No services added yet."))
+		b.WriteString(styleSubtle.Render("  No channels added yet."))
 		b.WriteByte('\n')
 	}
 
@@ -98,7 +98,7 @@ func (m listModel) View() string {
 	if m.cursor == addIdx {
 		cursor = styleCursor.Render("> ")
 	}
-	b.WriteString(cursor + styleHighlight.Render("[a]") + " Add service\n")
+	b.WriteString(cursor + styleHighlight.Render("[a]") + " Add channel\n")
 
 	// Finish action
 	cursor = "  "

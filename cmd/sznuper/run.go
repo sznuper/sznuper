@@ -95,7 +95,7 @@ func printResult(r runner.Result) {
 		}
 	}
 
-	// Show rendered message (pick first if all same, else show per-service).
+	// Show rendered message (pick first if all same, else show per-channel).
 	if len(r.Rendered) > 0 {
 		messages := uniqueMessages(r.Rendered)
 		if len(messages) == 1 {

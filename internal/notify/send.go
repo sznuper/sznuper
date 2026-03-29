@@ -10,18 +10,18 @@ import (
 
 // Target holds a fully resolved notification target ready to send.
 type Target struct {
-	ServiceName string
+	ChannelName string
 	URL         string
 	Message     string
 	Params      map[string]string
 }
 
 // ResolveTargets builds the list of notification targets from a notify list,
-// service definitions, and template data. It renders the message template
+// channel definitions, and template data. It renders the message template
 // for each target.
 func ResolveTargets(
 	notifyList []NotifyRef,
-	services map[string]ServiceDef,
+	channels map[string]ChannelDef,
 	tmplStr string,
 	data TemplateData,
 ) ([]Target, error) {
@@ -33,14 +33,14 @@ func ResolveTargets(
 	var targets []Target
 
 	for _, ref := range notifyList {
-		svc, ok := services[ref.ServiceName]
+		ch, ok := channels[ref.ChannelName]
 		if !ok {
-			return nil, fmt.Errorf("unknown service %q", ref.ServiceName)
+			return nil, fmt.Errorf("unknown channel %q", ref.ChannelName)
 		}
 
-		// Merge params: service base <- per-target override.
+		// Merge params: channel base <- per-target override.
 		merged := make(map[string]string)
-		for k, v := range svc.Params {
+		for k, v := range ch.Params {
 			merged[k] = v
 		}
 		for k, v := range ref.Params {
@@ -51,14 +51,14 @@ func ResolveTargets(
 		for k, v := range merged {
 			rendered, err := Render(v, data)
 			if err != nil {
-				return nil, fmt.Errorf("rendering param %q for %s: %w", k, ref.ServiceName, err)
+				return nil, fmt.Errorf("rendering param %q for %s: %w", k, ref.ChannelName, err)
 			}
 			merged[k] = rendered
 		}
 
 		targets = append(targets, Target{
-			ServiceName: ref.ServiceName,
-			URL:         svc.URL,
+			ChannelName: ref.ChannelName,
+			URL:         ch.URL,
 			Message:     msg,
 			Params:      merged,
 		})
@@ -85,7 +85,7 @@ func Send(t Target) error {
 	errs := sender.Send(t.Message, nil)
 	for _, e := range errs {
 		if e != nil {
-			return fmt.Errorf("sending to %s: %w", t.ServiceName, e)
+			return fmt.Errorf("sending to %s: %w", t.ChannelName, e)
 		}
 	}
 
@@ -95,12 +95,12 @@ func Send(t Target) error {
 func buildSender(t Target) (*router.ServiceRouter, error) {
 	fullURL, err := applyParams(t.URL, t.Params)
 	if err != nil {
-		return nil, fmt.Errorf("building URL for %s: %w", t.ServiceName, err)
+		return nil, fmt.Errorf("building URL for %s: %w", t.ChannelName, err)
 	}
 
 	sender, err := shoutrrr.CreateSender(fullURL)
 	if err != nil {
-		return nil, fmt.Errorf("creating sender for %s: %w", t.ServiceName, err)
+		return nil, fmt.Errorf("creating sender for %s: %w", t.ChannelName, err)
 	}
 
 	return sender, nil
@@ -128,12 +128,12 @@ func applyParams(rawURL string, params map[string]string) (string, error) {
 
 // NotifyRef is a simplified notify target reference used by ResolveTargets.
 type NotifyRef struct {
-	ServiceName string
+	ChannelName string
 	Params      map[string]string
 }
 
-// ServiceDef is a simplified service definition used by ResolveTargets.
-type ServiceDef struct {
+// ChannelDef is a simplified channel definition used by ResolveTargets.
+type ChannelDef struct {
 	URL    string
 	Params map[string]string
 }
