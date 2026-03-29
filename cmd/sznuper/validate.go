@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/sznuper/sznuper/internal/config"
 	"github.com/sznuper/sznuper/internal/healthcheck"
+	"github.com/sznuper/sznuper/internal/notify"
 )
 
 var validateCmd = &cobra.Command{
@@ -20,6 +22,26 @@ var validateCmd = &cobra.Command{
 		applyOptionFlags(cmd, cfg)
 
 		hasError := false
+
+		// Validate service definitions (dry-run Shoutrrr sender creation).
+		for name, svc := range cfg.Services {
+			if hasTemplateVar(svc.URL) {
+				fmt.Printf("~ %s (skipped: URL contains template variables)\n", name)
+				continue
+			}
+			t := notify.Target{
+				ServiceName: name,
+				URL:         svc.URL,
+				Params:      svc.Params,
+			}
+			if err := notify.Validate(t); err != nil {
+				fmt.Printf("✗ service %s: %s\n", name, err)
+				hasError = true
+			} else {
+				fmt.Printf("✓ service %s\n", name)
+			}
+		}
+
 		for _, alert := range cfg.Alerts {
 			_, err := healthcheck.Resolve(alert.Healthcheck, healthcheck.ResolveOpts{
 				HealthchecksDir: cfg.Options.HealthchecksDir,
@@ -66,6 +88,10 @@ func checkServiceRefs(alert config.Alert, services map[string]config.Service) []
 		}
 	}
 	return bad
+}
+
+func hasTemplateVar(s string) bool {
+	return strings.Contains(s, "{{")
 }
 
 func init() {
