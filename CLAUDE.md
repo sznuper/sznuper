@@ -17,7 +17,7 @@ Sznuper is intentionally dumb. The daemon is a generic executor — it runs any 
 - **CLI:** `spf13/cobra` — command structure, flags, args
 - **Config loading:** `goccy/go-yaml` — YAML decoding with strict mode and validator integration (not viper — see `docs/dependencies.md`)
 - **Config validation:** `go-playground/validator` — struct tag validation, plugs into goccy/go-yaml's `StructValidator` interface for line-number-aware errors
-- **Notifications:** `nicholas-fedor/shoutrrr` — multi-service notification delivery
+- **Notifications:** `nicholas-fedor/shoutrrr` — multi-channel notification delivery
 
 ## Docs
 

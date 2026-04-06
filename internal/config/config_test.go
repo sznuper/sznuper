@@ -118,14 +118,14 @@ alerts:
 	}
 
 	if notify[0].Channel != "logfile" {
-		t.Errorf("notify[0] service = %q, want %q", notify[0].Channel, "logfile")
+		t.Errorf("notify[0] channel = %q, want %q", notify[0].Channel, "logfile")
 	}
 	if len(notify[0].Params) != 0 {
 		t.Errorf("notify[0] params = %v, want empty", notify[0].Params)
 	}
 
 	if notify[1].Channel != "telegram" {
-		t.Errorf("notify[1] service = %q, want %q", notify[1].Channel, "telegram")
+		t.Errorf("notify[1] channel = %q, want %q", notify[1].Channel, "telegram")
 	}
 	if notify[1].Params["notification"] != "false" {
 		t.Errorf("notify[1] params = %v, want notification=false", notify[1].Params)
@@ -182,7 +182,7 @@ alerts:
 		t.Fatalf("failure notify count = %d, want 2", len(failure.Notify))
 	}
 	if failure.Notify[0].Channel != "telegram" {
-		t.Errorf("failure notify[0] service = %q, want %q", failure.Notify[0].Channel, "telegram")
+		t.Errorf("failure notify[0] channel = %q, want %q", failure.Notify[0].Channel, "telegram")
 	}
 	if failure.Notify[0].Params["notification"] != "false" {
 		t.Errorf("failure notify[0] params = %v, want notification=false", failure.Notify[0].Params)

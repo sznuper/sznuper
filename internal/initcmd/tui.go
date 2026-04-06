@@ -34,9 +34,9 @@ type Model struct {
 // NewModel creates the root TUI model.
 // Channels inherited from --from are shown pre-populated; cfg is the working config.
 func NewModel(cfg *config.Config, path string) Model {
-	var services []addedService
+	var channels []addedChannel
 	for name, ch := range cfg.Channels {
-		services = append(services, addedService{
+		channels = append(channels, addedChannel{
 			name:     name,
 			typeName: "base",
 			url:      ch.URL,
@@ -45,7 +45,7 @@ func NewModel(cfg *config.Config, path string) Model {
 	}
 	return Model{
 		screen: screenList,
-		list:   newListModel(services),
+		list:   newListModel(channels),
 		cfg:    cfg,
 		path:   path,
 	}
@@ -100,7 +100,7 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.picker = newPickerModel()
 		return m, m.picker.Init()
 	case actionFinishMsg:
-		if len(m.list.services) == 0 {
+		if len(m.list.channels) == 0 {
 			m.err = "Add at least one notification channel before saving"
 			return m, nil
 		}
@@ -109,10 +109,10 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.screen = screenConfirm
 		return m, nil
 	case actionDeleteMsg:
-		if msg.index < len(m.list.services) {
-			m.list.services = append(m.list.services[:msg.index], m.list.services[msg.index+1:]...)
-			if m.list.cursor >= len(m.list.services)+2 {
-				m.list.cursor = len(m.list.services) + 1
+		if msg.index < len(m.list.channels) {
+			m.list.channels = append(m.list.channels[:msg.index], m.list.channels[msg.index+1:]...)
+			if m.list.cursor >= len(m.list.channels)+2 {
+				m.list.cursor = len(m.list.channels) + 1
 			}
 		}
 		return m, nil
@@ -140,8 +140,8 @@ func (m Model) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case formSubmitMsg:
-		m.list.services = append(m.list.services, msg.service)
-		m.list.cursor = len(m.list.services) // point to [a]dd
+		m.list.channels = append(m.list.channels, msg.channel)
+		m.list.cursor = len(m.list.channels) // point to [a]dd
 		m.screen = screenList
 		return m, nil
 	}
@@ -211,7 +211,7 @@ func (m *Model) buildConfig() {
 	}
 
 	var added []string
-	for _, svc := range m.list.services {
+	for _, svc := range m.list.channels {
 		ch := config.Channel{URL: svc.url}
 		if len(svc.params) > 0 {
 			ch.Params = make(map[string]string)
@@ -235,7 +235,7 @@ func (m *Model) buildConfig() {
 
 func (m Model) existingNames() map[string]bool {
 	names := make(map[string]bool)
-	for _, svc := range m.list.services {
+	for _, svc := range m.list.channels {
 		names[svc.name] = true
 	}
 	return names

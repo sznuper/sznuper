@@ -68,7 +68,7 @@ func ResolveTargets(
 }
 
 // Validate builds the full URL and creates a Shoutrrr sender to verify
-// the service configuration is valid, without actually sending anything.
+// the channel configuration is valid, without actually sending anything.
 func Validate(t Target) error {
 	_, err := buildSender(t)
 	return err

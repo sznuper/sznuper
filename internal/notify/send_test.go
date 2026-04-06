@@ -5,7 +5,7 @@ import (
 )
 
 func TestResolveTargets_Basic(t *testing.T) {
-	services := map[string]ChannelDef{
+	channels := map[string]ChannelDef{
 		"telegram": {URL: "telegram://token@telegram", Params: map[string]string{"chats": "123"}},
 	}
 	refs := []NotifyRef{
@@ -16,7 +16,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 		map[string]any{"mount": "/"},
 	)
 
-	targets, err := ResolveTargets(refs, services, `{{event.type | upper}} {{globals.hostname}}`, data)
+	targets, err := ResolveTargets(refs, channels, `{{event.type | upper}} {{globals.hostname}}`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestResolveTargets_Basic(t *testing.T) {
 }
 
 func TestResolveTargets_ParamMerge(t *testing.T) {
-	services := map[string]ChannelDef{
+	channels := map[string]ChannelDef{
 		"telegram": {
 			URL:    "telegram://token@telegram",
 			Params: map[string]string{"chats": "123", "parsemode": "HTML"},
@@ -47,7 +47,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"type": "ok"}, nil)
 
-	targets, err := ResolveTargets(refs, services, `test`, data)
+	targets, err := ResolveTargets(refs, channels, `test`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestResolveTargets_ParamMerge(t *testing.T) {
 }
 
 func TestResolveTargets_TemplateInParams(t *testing.T) {
-	services := map[string]ChannelDef{
+	channels := map[string]ChannelDef{
 		"email": {URL: "smtp://user:pass@host"},
 	}
 	refs := []NotifyRef{
@@ -72,7 +72,7 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "vps-01"}, "alert",
 		map[string]string{"type": "critical_usage"}, nil)
 
-	targets, err := ResolveTargets(refs, services, `body`, data)
+	targets, err := ResolveTargets(refs, channels, `body`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,19 +82,19 @@ func TestResolveTargets_TemplateInParams(t *testing.T) {
 }
 
 func TestResolveTargets_UnknownService(t *testing.T) {
-	services := map[string]ChannelDef{}
+	channels := map[string]ChannelDef{}
 	refs := []NotifyRef{{ChannelName: "nonexistent"}}
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"type": "ok"}, nil)
 
-	_, err := ResolveTargets(refs, services, `test`, data)
+	_, err := ResolveTargets(refs, channels, `test`, data)
 	if err == nil {
-		t.Fatal("expected error for unknown service")
+		t.Fatal("expected error for unknown channel")
 	}
 }
 
 func TestResolveTargets_MultipleTargets(t *testing.T) {
-	services := map[string]ChannelDef{
+	channels := map[string]ChannelDef{
 		"telegram": {URL: "telegram://token@telegram"},
 		"slack":    {URL: "slack://token-a/token-b/token-c"},
 	}
@@ -105,7 +105,7 @@ func TestResolveTargets_MultipleTargets(t *testing.T) {
 	data := BuildTemplateData(map[string]any{"hostname": "host"}, "alert",
 		map[string]string{"type": "ok"}, nil)
 
-	targets, err := ResolveTargets(refs, services, `msg`, data)
+	targets, err := ResolveTargets(refs, channels, `msg`, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

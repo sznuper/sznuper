@@ -145,13 +145,13 @@ func (m *formModel) trySubmit() tea.Cmd {
 		}
 	}
 
-	svc := addedService{
+	svc := addedChannel{
 		name:     name,
 		typeName: m.svcType.Name,
 		url:      url,
 		params:   params,
 	}
-	return func() tea.Msg { return formSubmitMsg{service: svc} }
+	return func() tea.Msg { return formSubmitMsg{channel: svc} }
 }
 
 func (m formModel) View() string {
@@ -194,5 +194,5 @@ func (m formModel) View() string {
 
 // formSubmitMsg is emitted when the form is completed.
 type formSubmitMsg struct {
-	service addedService
+	channel addedChannel
 }
