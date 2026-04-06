@@ -24,7 +24,7 @@ options:
   cache_dir: /tmp/sznuper-e2e-cache
 globals:
   hostname: test-host
-services:
+channels:
   logger:
     url: logger://
 alerts:
@@ -70,7 +70,7 @@ options:
   cache_dir: /tmp/sznuper-e2e-cache
 globals:
   hostname: test-host
-services:
+channels:
   logger:
     url: logger://
 alerts:

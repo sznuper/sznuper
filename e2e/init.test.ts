@@ -4,12 +4,12 @@ import path from "node:path";
 import { runSznuper, withTempDir } from "./helpers.js";
 
 describe("sznuper init", () => {
-  it("creates config with --add-service in non-interactive mode", async () => {
+  it("creates config with --add-channel in non-interactive mode", async () => {
     await withTempDir(async (dir) => {
       const outPath = path.join(dir, "config.yml");
       const { exitCode, stderr } = await runSznuper([
         "init",
-        "--add-service",
+        "--add-channel",
         "logger:logger://",
         "--output",
         outPath,
@@ -20,7 +20,7 @@ describe("sznuper init", () => {
       expect(stderr).toContain("Config written to");
 
       const content = await readFile(outPath, "utf-8");
-      expect(content).toContain("services:");
+      expect(content).toContain("channels:");
       expect(content).toContain("logger:");
       expect(content).toContain("url: logger://");
       expect(content).toContain("alerts:");
@@ -35,7 +35,7 @@ describe("sznuper init", () => {
       // Create the config first
       await runSznuper([
         "init",
-        "--add-service",
+        "--add-channel",
         "logger:logger://",
         "--output",
         outPath,
@@ -45,7 +45,7 @@ describe("sznuper init", () => {
       // Try again without --force
       const { exitCode, stderr } = await runSznuper([
         "init",
-        "--add-service",
+        "--add-channel",
         "logger:logger://",
         "--output",
         outPath,
@@ -62,7 +62,7 @@ describe("sznuper init", () => {
       const basePath = path.join(dir, "base.yml");
       await runSznuper([
         "init",
-        "--add-service",
+        "--add-channel",
         "logger:logger://",
         "--output",
         basePath,
@@ -75,7 +75,7 @@ describe("sznuper init", () => {
         "init",
         "--from",
         basePath,
-        "--add-service",
+        "--add-channel",
         "test:logger://",
         "--output",
         outPath,
@@ -88,7 +88,7 @@ describe("sznuper init", () => {
     });
   });
 
-  it("fails without TTY and without --add-service", async () => {
+  it("fails without TTY and without --add-channel", async () => {
     await withTempDir(async (dir) => {
       const outPath = path.join(dir, "config.yml");
       const { exitCode, stderr } = await runSznuper([
