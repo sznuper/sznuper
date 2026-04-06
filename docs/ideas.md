@@ -74,7 +74,7 @@ Renamed the notification `services` concept to `channels` throughout the codebas
 
 A `builtin://debug` healthcheck that emits verbose daemon-internal events -- config reload success/failure, validation errors, scheduler restarts, etc. Opt-in: only runs if explicitly added to an alert in the config, not present by default.
 
-The regular `builtin://lifecycle` should stay lightweight (started/stopped/reloaded). The debug check is for users who want deeper observability into what the daemon is doing internally, delivered through the same alert/notification pipeline as everything else.
+The regular `builtin://lifecycle` should stay lightweight (started/stopped/reload_success/reload_failure). The debug check is for users who want deeper observability into what the daemon is doing internally, delivered through the same alert/notification pipeline as everything else.
 
 ```yaml
 alerts:
@@ -88,7 +88,7 @@ alerts:
 ```
 
 Open questions:
-- What events should it emit? Candidates: `reload_ok`, `reload_failed`, `config_validated`, `healthcheck_timeout`, `notification_failed`, `scheduler_restarted`
+- What events should it emit? Candidates: `config_validated`, `healthcheck_timeout`, `notification_failed`, `scheduler_restarted` (reload events are already covered by `builtin://lifecycle`)
 - Should it overlap with lifecycle at all, or be strictly additive?
 - Naming: `builtin://debug`, `builtin://daemon`, `builtin://internal`?
 
