@@ -22,7 +22,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Build sznuper
-        run: make build
+        run: go build -o sznuper ./cmd/sznuper
 
       - name: Setup Node
         uses: actions/setup-node@v4

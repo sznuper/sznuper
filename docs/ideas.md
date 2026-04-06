@@ -98,6 +98,6 @@ The lifecycle events `started` and `stopped` use past tense, which is inconsiste
 
 This is a breaking change for anyone using `events.override` with `started`/`stopped` keys in their config.
 
-## Goreleaser
+## ~~Goreleaser~~ Done
 
-Use [GoReleaser](https://goreleaser.com) to automate building and releasing sznuper binaries. Handles cross-compilation, GitHub releases, changelogs, checksums, and packaging (deb, rpm, Docker, Homebrew, etc.) from a single `.goreleaser.yml`.
+Integrated GoReleaser to automate building and releasing sznuper binaries. Handles cross-compilation (linux/amd64, linux/arm64), GitHub releases with tar.gz archives, checksums, and structured changelogs from `.goreleaser.yml`. Replaced the custom matrix build pipeline and Makefile.

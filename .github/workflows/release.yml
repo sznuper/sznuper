@@ -3,20 +3,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: "Version bump"
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-        default: minor
-      latest:
-        description: "Set as latest release"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -29,113 +15,39 @@ jobs:
     needs: ci
     uses: ./.github/workflows/e2e.yml
 
-  version:
+  release:
     needs: e2e
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
-
-      - name: Determine version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            latest=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "v0.0.0")
-            latest="${latest#v}"
-            IFS='.' read -r major minor patch <<< "$latest"
-            case "${{ inputs.bump }}" in
-              major) major=$((major + 1)); minor=0; patch=0 ;;
-              minor) minor=$((minor + 1)); patch=0 ;;
-              patch) patch=$((patch + 1)) ;;
-            esac
-            echo "tag=v${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-  build:
-    needs: version
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: make build VERSION=${{ needs.version.outputs.tag }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          name: sznuper-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: sznuper
-
-  publish:
-    needs: [version, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-
-      - name: Prepare binaries
-        run: |
-          mkdir -p release
-          for dir in artifacts/sznuper-*; do
-            name=$(basename "$dir")
-            cp "$dir/sznuper" "release/$name"
-            chmod +x "release/$name"
-          done
-
-      - name: Create tag (workflow_dispatch only)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git tag "${{ needs.version.outputs.tag }}"
-          git push origin "${{ needs.version.outputs.tag }}"
-
-      - name: Create release
+          version: latest
+          args: release --clean
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          FLAGS="--generate-notes"
-          if [ "${{ inputs.latest }}" != "true" ]; then
-            FLAGS="$FLAGS --prerelease"
-          fi
-          gh release create "${{ needs.version.outputs.tag }}" \
-            $FLAGS \
-            release/sznuper-*
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   e2e-install:
-    needs: [version, publish]
+    needs: release
     uses: ./.github/workflows/e2e-install.yml
     with:
-      tag: ${{ needs.version.outputs.tag }}
+      tag: ${{ github.ref_name }}
     secrets:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
       HETZNER_SSH_KEY_NAME: ${{ secrets.HETZNER_SSH_KEY_NAME }}
 
   notify-dist:
-    needs: [version, e2e-install]
+    needs: e2e-install
     runs-on: ubuntu-latest
     steps:
       - name: Trigger dist E2E
@@ -144,4 +56,4 @@ jobs:
         run: |
           gh api repos/sznuper/dist/dispatches \
             -f event_type=sznuper-release \
-            -f 'client_payload[tag]=${{ needs.version.outputs.tag }}'
+            -f 'client_payload[tag]=${{ github.ref_name }}'
