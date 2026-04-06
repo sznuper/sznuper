@@ -116,7 +116,7 @@ check() {
 }
 
 check "binary exists"           "test -x /usr/local/bin/sznuper"
-check "version matches"         "sznuper version | grep -qF '$VERSION'"
+check "version matches"         "sznuper version | grep -qF '${VERSION#v}'"
 check "config exists"           "test -f /etc/sznuper/config.yml"
 check "systemd unit installed"  "test -f /etc/systemd/system/sznuper.service"
 check "systemd enabled"         "systemctl is-enabled sznuper"
