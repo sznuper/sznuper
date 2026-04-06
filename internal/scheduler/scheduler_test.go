@@ -56,7 +56,7 @@ func TestScheduler_ValidInterval_FiresMultipleTimes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), interval*5/2) // 2.5 x interval
 	defer cancel()
 
-	sched.Start(ctx, cfg.Alerts, false)
+	sched.Start(ctx, cfg.Alerts, StartOpts{})
 
 	got := count.Load()
 	if got < 2 {
@@ -91,7 +91,7 @@ func TestScheduler_CronFires(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
 	defer cancel()
 
-	sched.Start(ctx, cfg.Alerts, false)
+	sched.Start(ctx, cfg.Alerts, StartOpts{})
 
 	if got := count.Load(); got < 2 {
 		t.Errorf("onResult called %d times, want >= 2", got)
@@ -136,7 +136,7 @@ func TestScheduler_CronInvalid_NeverFires(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	sched.Start(ctx, cfg.Alerts, false)
+	sched.Start(ctx, cfg.Alerts, StartOpts{})
 
 	if got := count.Load(); got != 0 {
 		t.Errorf("onResult called %d times, want 0", got)
@@ -169,7 +169,7 @@ func TestScheduler_NoTrigger_NeverFires(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	sched.Start(ctx, cfg.Alerts, false)
+	sched.Start(ctx, cfg.Alerts, StartOpts{})
 
 	if got := count.Load(); got != 0 {
 		t.Errorf("onResult called %d times, want 0", got)
@@ -208,7 +208,7 @@ func TestScheduler_MultipleTriggers_BothFire(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
 
-	sched.Start(ctx, cfg.Alerts, false)
+	sched.Start(ctx, cfg.Alerts, StartOpts{})
 
 	got := count.Load()
 	// Interval alone would fire ~30 times in 1.5s. Cron fires once per second.
@@ -245,7 +245,7 @@ func TestScheduler_ContextCancel_ExitsCleanly(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sched.Start(ctx, cfg.Alerts, false)
+		sched.Start(ctx, cfg.Alerts, StartOpts{})
 	}()
 
 	time.Sleep(60 * time.Millisecond)
@@ -312,7 +312,7 @@ func TestScheduler_Watch_FiresOnAppend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go sched.Start(ctx, cfg.Alerts, true)
+	go sched.Start(ctx, cfg.Alerts, StartOpts{DryRun: true})
 
 	// Give watcher time to start and seek to end of file.
 	time.Sleep(100 * time.Millisecond)
@@ -396,7 +396,7 @@ func TestScheduler_Watch_BuffersWhileRunning(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go sched.Start(ctx, cfg.Alerts, true)
+	go sched.Start(ctx, cfg.Alerts, StartOpts{DryRun: true})
 	time.Sleep(100 * time.Millisecond)
 
 	appendLine := func(s string) {
@@ -476,7 +476,7 @@ func TestScheduler_Watch_HandlesRotation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go sched.Start(ctx, cfg.Alerts, true)
+	go sched.Start(ctx, cfg.Alerts, StartOpts{DryRun: true})
 	time.Sleep(100 * time.Millisecond)
 
 	// Simulate log rotation: rename old file, create new one.
@@ -543,7 +543,7 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go sched.Start(ctx, cfg.Alerts, true)
+	go sched.Start(ctx, cfg.Alerts, StartOpts{DryRun: true})
 	time.Sleep(100 * time.Millisecond)
 
 	// Truncate and write short content.
@@ -582,5 +582,65 @@ func TestScheduler_Watch_HandlesTruncation(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("post-truncation content not seen in any result fields")
+	}
+}
+
+func TestScheduler_SkipLifecycle_NoStartedStopped(t *testing.T) {
+	dir := t.TempDir()
+	writeScript(t, dir)
+
+	cfg := &config.Config{
+		Options: config.Options{HealthchecksDir: dir},
+		Globals: map[string]any{},
+		Alerts: []config.Alert{
+			{
+				Name:        "lifecycle-alert",
+				Healthcheck: "builtin://lifecycle",
+				Triggers:    []config.Trigger{{Lifecycle: true}},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
+			},
+			{
+				Name:        "tick",
+				Healthcheck: "file://check.sh",
+				Triggers:    []config.Trigger{{Interval: "50ms"}},
+				Template:    "test",
+				Notify:      []config.NotifyTarget{{Channel: "logger"}},
+			},
+		},
+		Channels: map[string]config.Channel{"logger": {URL: "logger://"}},
+	}
+
+	var mu sync.Mutex
+	var results []runner.Result
+	sched := New(newRunner(t, cfg), slog.Default(), func(res runner.Result) {
+		mu.Lock()
+		results = append(results, res)
+		mu.Unlock()
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+
+	sched.Start(ctx, cfg.Alerts, StartOpts{SkipLifecycle: true})
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	for _, res := range results {
+		if res.EventType == "started" || res.EventType == "stopped" {
+			t.Errorf("unexpected lifecycle event %q with SkipLifecycle: true", res.EventType)
+		}
+	}
+	// The interval alert should still have fired.
+	hasInterval := false
+	for _, res := range results {
+		if res.AlertName == "tick" {
+			hasInterval = true
+			break
+		}
+	}
+	if !hasInterval {
+		t.Error("interval alert did not fire with SkipLifecycle: true")
 	}
 }

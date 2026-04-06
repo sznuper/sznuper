@@ -19,7 +19,7 @@ func DefaultConfigPaths() []string {
 // Resolve loads the config from the given explicit path, or searches the
 // default locations.
 func Resolve(explicit string) (*Config, error) {
-	path, err := findConfig(explicit)
+	path, err := FindPath(explicit)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,9 @@ func Resolve(explicit string) (*Config, error) {
 	return Load(path)
 }
 
-func findConfig(explicit string) (string, error) {
+// FindPath returns the path to the config file. If explicit is non-empty, it
+// validates and returns that path. Otherwise it searches the default locations.
+func FindPath(explicit string) (string, error) {
 	if explicit != "" {
 		if _, err := os.Stat(explicit); err != nil {
 			return "", fmt.Errorf("config file not found: %s", explicit)

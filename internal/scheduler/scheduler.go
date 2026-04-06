@@ -28,12 +28,19 @@ func New(r *runner.Runner, logger *slog.Logger, onResult OnResult) *Scheduler {
 	return &Scheduler{runner: r, logger: logger, onResult: onResult}
 }
 
+// StartOpts holds options for Scheduler.Start.
+type StartOpts struct {
+	DryRun        bool
+	SkipLifecycle bool // suppress started/stopped lifecycle events (used during reload)
+}
+
 // Start launches one goroutine per alert and blocks until ctx is done.
-// Lifecycle alerts fire at start (before loops) and stop (after loops exit).
-func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun bool) {
+// Lifecycle alerts fire at start (before loops) and stop (after loops exit),
+// unless SkipLifecycle is set.
+func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, opts StartOpts) {
 	var lifecycle, regular []config.Alert
 	for _, a := range alerts {
-		if hasLifecycleTrigger(a.Triggers) {
+		if HasLifecycleTrigger(a.Triggers) {
 			lifecycle = append(lifecycle, a)
 		} else {
 			regular = append(regular, a)
@@ -42,8 +49,10 @@ func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun boo
 
 	totalAlerts := len(alerts)
 
-	// Fire lifecycle alerts with event=started (blocking).
-	s.fireLifecycle(ctx, lifecycle, "started", totalAlerts, dryRun)
+	if !opts.SkipLifecycle {
+		// Fire lifecycle alerts with event=started (blocking).
+		s.FireLifecycle(ctx, lifecycle, "started", totalAlerts, opts.DryRun)
+	}
 
 	// Run regular alert loops.
 	var wg sync.WaitGroup
@@ -51,19 +60,21 @@ func (s *Scheduler) Start(ctx context.Context, alerts []config.Alert, dryRun boo
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			s.runAlertLoop(ctx, &regular[i], dryRun)
+			s.runAlertLoop(ctx, &regular[i], opts.DryRun)
 		}(i)
 	}
 	wg.Wait()
 
-	// Fire lifecycle alerts with event=stopped (fresh context so HTTP still works).
-	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	s.fireLifecycle(stopCtx, lifecycle, "stopped", totalAlerts, dryRun)
+	if !opts.SkipLifecycle {
+		// Fire lifecycle alerts with event=stopped (fresh context so HTTP still works).
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		s.FireLifecycle(stopCtx, lifecycle, "stopped", totalAlerts, opts.DryRun)
+	}
 }
 
-// fireLifecycle runs all lifecycle alerts with the given event, blocking until done.
-func (s *Scheduler) fireLifecycle(ctx context.Context, alerts []config.Alert, event string, totalAlerts int, dryRun bool) {
+// FireLifecycle runs all lifecycle alerts with the given event, blocking until done.
+func (s *Scheduler) FireLifecycle(ctx context.Context, alerts []config.Alert, event string, totalAlerts int, dryRun bool) {
 	params := map[string]string{
 		"event":  event,
 		"alerts": strconv.Itoa(totalAlerts),
@@ -141,7 +152,8 @@ func (s *Scheduler) runTrigger(ctx context.Context, alert *config.Alert, trigger
 	}
 }
 
-func hasLifecycleTrigger(triggers []config.Trigger) bool {
+// HasLifecycleTrigger returns true if any trigger in the list is a lifecycle trigger.
+func HasLifecycleTrigger(triggers []config.Trigger) bool {
 	for _, t := range triggers {
 		if t.Lifecycle {
 			return true

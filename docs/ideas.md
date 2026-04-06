@@ -46,9 +46,9 @@ Open questions:
 - Should it apply to pipe triggers that emit multiple events per invocation, or only interval/cron triggers where each run produces one result?
 - Interaction with cooldown — does the counter reset after cooldown expires, or does it persist?
 
-## Config hot-reload
+## ~~Config hot-reload~~ Done
 
-Re-read the config file when it changes on disk, without requiring a full daemon restart. Watch for file changes (e.g. inotify/fsnotify) and apply the new config at runtime — add/remove/update alerts, channels, and options.
+Implemented SIGHUP-based config reload. Sending SIGHUP (or `systemctl reload sznuper`) validates the new config, cancels the current scheduler, and starts a fresh one. Invalid configs are rejected and the daemon keeps running. New lifecycle events: `reload_success` and `reload_failure`.
 
 ## Logging overhaul (Caddy-inspired)
 
@@ -69,6 +69,34 @@ Adding arbitrary `https://` healthchecks in the TUI is probably not worth it -- 
 ## ~~Rename "services" to "channels"~~ Done
 
 Renamed the notification `services` concept to `channels` throughout the codebase and config. "Channel" is more intuitive and aligns with the terminology used by tools like Oncall/OpenClaw and similar incident management tools that have become popular.
+
+## Debug builtin healthcheck
+
+A `builtin://debug` healthcheck that emits verbose daemon-internal events -- config reload success/failure, validation errors, scheduler restarts, etc. Opt-in: only runs if explicitly added to an alert in the config, not present by default.
+
+The regular `builtin://lifecycle` should stay lightweight (started/stopped/reloaded). The debug check is for users who want deeper observability into what the daemon is doing internally, delivered through the same alert/notification pipeline as everything else.
+
+```yaml
+alerts:
+  - name: sznuper-debug
+    healthcheck: builtin://debug
+    trigger:
+      lifecycle: true
+    template: "[sznuper] {{ .Event.type }}: {{ .Event.detail }}"
+    notify:
+      - channel: telegram
+```
+
+Open questions:
+- What events should it emit? Candidates: `reload_ok`, `reload_failed`, `config_validated`, `healthcheck_timeout`, `notification_failed`, `scheduler_restarted`
+- Should it overlap with lifecycle at all, or be strictly additive?
+- Naming: `builtin://debug`, `builtin://daemon`, `builtin://internal`?
+
+## Rename lifecycle event types
+
+The lifecycle events `started` and `stopped` use past tense, which is inconsistent with the healthcheck event naming convention. Healthchecks use snake_case nouns/adjective states: `ok`, `high_usage`, `critical_usage`, `failure`, `login`, `logout`. The lifecycle events should follow the same pattern -- e.g. `start` and `stop` instead of `started` and `stopped`.
+
+This is a breaking change for anyone using `events.override` with `started`/`stopped` keys in their config.
 
 ## Goreleaser
 
